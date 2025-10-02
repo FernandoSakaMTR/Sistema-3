@@ -3,7 +3,11 @@ import { MOCK_REQUESTS, USERS } from '../constants';
 import type { MaintenanceRequest, User } from '../types';
 import { RequestStatus } from '../types';
 
-let requests: MaintenanceRequest[] = [...MOCK_REQUESTS];
+export let requests: MaintenanceRequest[] = [...MOCK_REQUESTS];
+
+export const __resetRequests = () => {
+    requests = [...MOCK_REQUESTS];
+};
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 

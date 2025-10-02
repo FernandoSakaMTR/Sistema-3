@@ -14,6 +14,7 @@ import * as api from './services/mockApiService';
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [currentPage, setCurrentPage] = useState('dashboard');
+    const [previousPage, setPreviousPage] = useState<string | null>(null);
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,13 +51,14 @@ const App: React.FC = () => {
     };
 
     const handleSelectRequest = (id: string) => {
+        setPreviousPage(currentPage);
         setSelectedRequestId(id);
         setCurrentPage('request-detail');
     };
 
     const handleBackToList = () => {
         setSelectedRequestId(null);
-        setCurrentPage('all-requests');
+        setCurrentPage(previousPage || 'all-requests');
     };
     
     const handleCreateRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
