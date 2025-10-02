@@ -10,7 +10,7 @@ interface PriorityBadgeProps {
 const PriorityBadge: React.FC<PriorityBadgeProps> = ({ status }) => {
   const colorClass = EQUIPMENT_STATUS_COLORS[status] || 'bg-gray-500 text-white';
   return (
-    <span className={`px-3 py-1 text-xs font-bold rounded-full ${colorClass}`}>
+    <span className={`px-4 py-1 text-base font-bold rounded-full ${colorClass}`}>
       {status.toUpperCase()}
     </span>
   );

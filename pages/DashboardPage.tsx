@@ -23,7 +23,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
   const statusData = [
     { name: 'Abertas', count: openCount, fill: '#4f46e5' },
     { name: 'Em Andamento', count: inProgressCount, fill: '#3b82f6' },
-    { name: 'Pausadas', count: pausedCount, fill: '#64748b' },
+    { name: 'Atend. Parados', count: pausedCount, fill: '#64748b' },
     { name: 'Concluídas', count: completedCount, fill: '#22c55e' },
   ];
 
@@ -35,7 +35,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
         <StatCard title="Requisições Abertas" value={openCount} color="text-status-open" />
         <StatCard title="Em Andamento" value={inProgressCount} color="text-status-progress" />
         <StatCard title="Concluídas (Total)" value={completedCount} color="text-status-completed" />
-        <StatCard title="Pausadas" value={pausedCount} color="text-status-paused" />
+        <StatCard title="Atendimentos Parados" value={pausedCount} color="text-status-paused" />
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">

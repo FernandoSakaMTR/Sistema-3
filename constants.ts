@@ -12,13 +12,13 @@ export let USERS: User[] = [
 export const SECTORS: string[] = ['Rosqueadeira', 'Prensa', 'Expedição', 'Outro'];
 
 export const STATUS_COLORS: Record<RequestStatus, string> = {
-  [RequestStatus.OPEN]: 'bg-slate-300 text-slate-800',
-  [RequestStatus.VIEWED]: 'bg-slate-300 text-slate-800',
-  [RequestStatus.ACCEPTED]: 'bg-slate-300 text-slate-800',
-  [RequestStatus.IN_PROGRESS]: 'bg-slate-500 text-white',
-  [RequestStatus.PAUSED]: 'bg-slate-300 text-slate-800',
-  [RequestStatus.COMPLETED]: 'bg-slate-700 text-white',
-  [RequestStatus.CANCELED]: 'bg-slate-700 text-white'
+  [RequestStatus.OPEN]: 'bg-indigo-200 text-indigo-800',
+  [RequestStatus.VIEWED]: 'bg-indigo-200 text-indigo-800',
+  [RequestStatus.ACCEPTED]: 'bg-indigo-200 text-indigo-800',
+  [RequestStatus.IN_PROGRESS]: 'bg-blue-200 text-blue-800',
+  [RequestStatus.PAUSED]: 'bg-yellow-200 text-yellow-800',
+  [RequestStatus.COMPLETED]: 'bg-teal-200 text-teal-800',
+  [RequestStatus.CANCELED]: 'bg-slate-500 text-white'
 };
 
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
@@ -92,6 +92,22 @@ export const MOCK_REQUESTS: MaintenanceRequest[] = [
     assignedTo: USERS[3],
     startedAt: new Date('2024-07-21T09:00:00'),
     pauseReason: 'Aguardando chegada do cabo de rede.',
+    attachments: [],
+  },
+  {
+    id: 'MAN-005',
+    title: 'Verificação de ruído no motor da Rosqueadeira R-05',
+    description: 'Operadores relatam um ruído anormal vindo do motor principal da Rosqueadeira R-05, especialmente em alta rotação.',
+    status: RequestStatus.CANCELED,
+    equipmentStatus: EquipmentStatus.PARTIAL,
+    requester: USERS[0],
+    requesterSector: 'Rosqueadeira',
+    equipment: ['Rosqueadeira R-05'],
+    maintenanceType: MaintenanceType.MECHANICAL,
+    createdAt: new Date('2024-07-22T08:00:00'),
+    updatedAt: new Date('2024-07-22T10:00:00'),
+    assignedTo: USERS[4],
+    cancelReason: 'Requisição duplicada. O problema já foi reportado e está sendo tratado na OS MAN-006.',
     attachments: [],
   },
 ];

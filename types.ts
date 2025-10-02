@@ -18,7 +18,7 @@ export enum RequestStatus {
   VIEWED = 'Visualizada',
   ACCEPTED = 'Aceita',
   IN_PROGRESS = 'Em atendimento',
-  PAUSED = 'Parada',
+  PAUSED = 'Atendimento Parado',
   COMPLETED = 'Concluída',
   CANCELED = 'Cancelada'
 }

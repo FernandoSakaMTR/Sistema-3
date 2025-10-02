@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
@@ -18,6 +17,19 @@ const DetailItem: React.FC<{ label: string; value?: string | string[] | null, ch
         {children ? <div className="mt-1">{children}</div> : <p className="text-md text-gray-800 font-semibold">{Array.isArray(value) ? value.join(', ') : value || 'N/A'}</p>}
     </div>
 );
+
+const ReasonBox: React.FC<{ title: string; reason: string; color: 'red' | 'yellow' }> = ({ title, reason, color }) => {
+    const colorClasses = {
+        red: 'bg-red-50 border-red-300 text-red-900',
+        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900'
+    };
+    return (
+        <div className={`p-4 mt-4 border-l-4 rounded-md ${colorClasses[color]}`}>
+            <h3 className="font-bold">{title}</h3>
+            <p className="text-sm mt-1">{reason}</p>
+        </div>
+    );
+};
 
 const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, onBack }) => {
     const [request, setRequest] = useState<MaintenanceRequest | null>(null);
@@ -87,8 +99,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <div className="space-y-6">
                         <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Descrição</h2>
                         <p className="text-gray-700 whitespace-pre-wrap">{request.description}</p>
-                         {request.status === RequestStatus.CANCELED && <DetailItem label="Motivo do Cancelamento" value={request.cancelReason} />}
-                        {request.status === RequestStatus.PAUSED && <DetailItem label="Motivo da Pausa" value={request.pauseReason} />}
+                        {request.status === RequestStatus.CANCELED && request.cancelReason && (
+                           <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
+                        )}
+                        {request.status === RequestStatus.PAUSED && request.pauseReason && (
+                            <ReasonBox title="Motivo da Pausa" reason={request.pauseReason} color="yellow" />
+                        )}
                     </div>
 
                     {/* Coluna 3: Detalhes da Execução */}
