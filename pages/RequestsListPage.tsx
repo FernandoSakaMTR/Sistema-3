@@ -11,17 +11,17 @@ interface RequestsListPageProps {
 }
 
 const RequestCard: React.FC<{ request: MaintenanceRequest, onSelect: () => void }> = ({ request, onSelect }) => (
-    <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={onSelect}>
+    <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden" onClick={onSelect}>
         <div className="flex flex-col items-start gap-y-2 sm:flex-row sm:items-start sm:justify-between sm:gap-y-0">
-            <div className="flex items-center gap-x-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:min-w-0">
                 <StatusBadge status={request.status} />
                 <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
             </div>
             <PriorityBadge status={request.equipmentStatus} />
         </div>
         <div className="mt-2">
-            <h3 className="text-lg font-bold text-gray-800">{request.title}</h3>
-            <p className="text-sm text-gray-500 mt-1">Requisitante: {request.requester.name}</p>
+            <h3 className="text-lg font-bold text-gray-800 break-words">{request.title}</h3>
+            <p className="text-sm text-gray-500 mt-1 break-words">Requisitante: {request.requester.name}</p>
         </div>
         <div className="border-t my-4"></div>
         <div className="flex justify-between items-center text-sm text-gray-600">
