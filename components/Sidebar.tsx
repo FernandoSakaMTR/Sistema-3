@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { DashboardIcon, ListIcon, PlusIcon, WrenchIcon } from './icons';
+import { DashboardIcon, ListIcon, PlusIcon, WrenchIcon, UserIcon } from './icons';
 import type { User } from '../types';
 import { UserRole } from '../types';
 
@@ -30,7 +30,8 @@ const NavItem: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate }) => {
-  const canViewDashboard = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
+  const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
+  const isAdmin = user.role === UserRole.ADMIN;
   const canCreate = [UserRole.REQUESTER, UserRole.ADMIN].includes(user.role);
   const canViewAll = [UserRole.MAINTENANCE, UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
 
@@ -42,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate }) => {
       </div>
       <nav>
         <ul>
-          {canViewDashboard && (
+          {isManagerOrAdmin && (
             <NavItem
               icon={<DashboardIcon className="h-6 w-6" />}
               label="Dashboard"
@@ -70,6 +71,14 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate }) => {
               label="Abrir Requisição"
               isActive={currentPage === 'create-request'}
               onClick={() => onNavigate('create-request')}
+            />
+          )}
+          {isAdmin && (
+            <NavItem
+              icon={<UserIcon className="h-6 w-6" />}
+              label="Gerenciar Usuários"
+              isActive={currentPage === 'user-management'}
+              onClick={() => onNavigate('user-management')}
             />
           )}
         </ul>

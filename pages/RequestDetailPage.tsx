@@ -65,7 +65,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <p className="text-gray-500">{request.id}</p>
                 </div>
                 <div className="flex items-center space-x-4">
-                    <PriorityBadge priority={request.priority} />
+                    <PriorityBadge status={request.equipmentStatus} />
                     <StatusBadge status={request.status} />
                 </div>
             </div>

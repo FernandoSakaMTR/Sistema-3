@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import StatusBadge from '../components/StatusBadge';
@@ -14,15 +13,15 @@ interface RequestsListPageProps {
 const RequestCard: React.FC<{ request: MaintenanceRequest, onSelect: () => void }> = ({ request, onSelect }) => (
     <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={onSelect}>
         <div className="flex justify-between items-start">
-            <div>
-                <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
-                <h3 className="text-lg font-bold text-gray-800 mt-1">{request.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">Requisitante: {request.requester.name}</p>
-            </div>
-            <div className="flex flex-col items-end space-y-2">
+            <div className="flex items-center gap-x-3">
                 <StatusBadge status={request.status} />
-                <PriorityBadge priority={request.priority} />
+                <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
             </div>
+            <PriorityBadge status={request.equipmentStatus} />
+        </div>
+        <div className="mt-2">
+            <h3 className="text-lg font-bold text-gray-800">{request.title}</h3>
+            <p className="text-sm text-gray-500 mt-1">Requisitante: {request.requester.name}</p>
         </div>
         <div className="border-t my-4"></div>
         <div className="flex justify-between items-center text-sm text-gray-600">

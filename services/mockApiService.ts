@@ -1,15 +1,36 @@
 
 import { MOCK_REQUESTS, USERS } from '../constants';
 import type { MaintenanceRequest, User } from '../types';
-import { RequestStatus } from '../types';
+import { RequestStatus, UserRole } from '../types';
 
 let requests: MaintenanceRequest[] = [...MOCK_REQUESTS];
+let users: User[] = [...USERS];
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export const mockLogin = async (userId: number): Promise<User | undefined> => {
+export const mockLogin = async (userId: number, password?: string): Promise<User | undefined> => {
   await delay(500);
-  return USERS.find(u => u.id === userId);
+  const user = users.find(u => u.id === userId);
+  if (user && user.password === password) {
+    return user;
+  }
+  return undefined;
+};
+
+export const getUsers = async (): Promise<User[]> => {
+    await delay(200);
+    return [...users];
+};
+
+export const createUser = async (newUserData: Omit<User, 'id'>): Promise<User> => {
+    await delay(600);
+    const newId = Math.max(...users.map(u => u.id)) + 1;
+    const newUser: User = {
+        ...newUserData,
+        id: newId,
+    };
+    users.push(newUser);
+    return newUser;
 };
 
 export const getRequests = async (): Promise<MaintenanceRequest[]> => {

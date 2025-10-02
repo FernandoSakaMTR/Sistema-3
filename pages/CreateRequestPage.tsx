@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import type { User, MaintenanceRequest } from '../types';
-import { MaintenanceType, Priority } from '../types';
+import { MaintenanceType, EquipmentStatus } from '../types';
 
 interface CreateRequestPageProps {
     user: User;
@@ -11,7 +11,7 @@ interface CreateRequestPageProps {
 const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [priority, setPriority] = useState<Priority>(Priority.MEDIUM);
+    const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PARTIAL);
     const [equipment, setEquipment] = useState('');
     const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
     const [attachments, setAttachments] = useState<File[]>([]);
@@ -26,7 +26,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
         const newRequestData = {
             title,
             description,
-            priority,
+            equipmentStatus,
             requester: user,
             requesterSector: user.sector,
             equipment: equipment.split(',').map(item => item.trim()),
@@ -64,9 +64,9 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
                         </select>
                     </div>
                     <div>
-                        <label htmlFor="priority" className="block text-sm font-medium text-gray-700">Prioridade*</label>
-                        <select id="priority" value={priority} onChange={e => setPriority(e.target.value as Priority)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                            {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
+                        <label htmlFor="equipmentStatus" className="block text-sm font-medium text-gray-700">Status do Equipamento*</label>
+                        <select id="equipmentStatus" value={equipmentStatus} onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            {Object.values(EquipmentStatus).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
                 </div>

@@ -1,4 +1,3 @@
-
 export enum UserRole {
   REQUESTER = 'Requisitante',
   MAINTENANCE = 'Manutenção',
@@ -11,6 +10,7 @@ export interface User {
   name: string;
   role: UserRole;
   sector: string;
+  password?: string; // Adicionado para suportar senhas
 }
 
 export enum RequestStatus {
@@ -26,16 +26,13 @@ export enum RequestStatus {
 export enum MaintenanceType {
   ELECTRICAL = 'Elétrica',
   MECHANICAL = 'Mecânica',
-  CIVIL = 'Civil',
-  IT = 'T.I.',
   OTHER = 'Outro'
 }
 
-export enum Priority {
-  LOW = 'Baixa',
-  MEDIUM = 'Média',
-  HIGH = 'Alta',
-  URGENT = 'Urgente'
+export enum EquipmentStatus {
+  OPERATIONAL = 'Funcionando',
+  PARTIAL = 'Parcialmente funcionando',
+  INOPERATIVE = 'INOPERANTE'
 }
 
 export interface MaintenanceRequest {
@@ -43,7 +40,7 @@ export interface MaintenanceRequest {
   title: string;
   description: string;
   status: RequestStatus;
-  priority: Priority;
+  equipmentStatus: EquipmentStatus;
   requester: User;
   requesterSector: string;
   equipment: string[];

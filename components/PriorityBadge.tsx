@@ -1,17 +1,17 @@
 
 import React from 'react';
-import type { Priority } from '../types';
-import { PRIORITY_COLORS } from '../constants';
+import type { EquipmentStatus } from '../types';
+import { EQUIPMENT_STATUS_COLORS } from '../constants';
 
 interface PriorityBadgeProps {
-  priority: Priority;
+  status: EquipmentStatus;
 }
 
-const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
-  const colorClass = PRIORITY_COLORS[priority] || 'bg-gray-500 text-white';
+const PriorityBadge: React.FC<PriorityBadgeProps> = ({ status }) => {
+  const colorClass = EQUIPMENT_STATUS_COLORS[status] || 'bg-gray-500 text-white';
   return (
     <span className={`px-3 py-1 text-xs font-bold rounded-full ${colorClass}`}>
-      {priority.toUpperCase()}
+      {status.toUpperCase()}
     </span>
   );
 };

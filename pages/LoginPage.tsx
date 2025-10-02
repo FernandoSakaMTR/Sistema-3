@@ -1,23 +1,50 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User } from '../types';
-import { USERS } from '../constants';
-import { WrenchIcon, UserIcon } from '../components/icons';
+import * as api from '../services/mockApiService';
+import { WrenchIcon, UserIcon, LockIcon } from '../components/icons';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [selectedUserId, setSelectedUserId] = useState<string>(USERS[0].id.toString());
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const userList = await api.getUsers();
+      setUsers(userList);
+      if (userList.length > 0) {
+        setSelectedUserId(userList[0].id.toString());
+      }
+      setLoading(false);
+    };
+    fetchUsers();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = USERS.find(u => u.id === parseInt(selectedUserId, 10));
+    setError('');
+    const user = await api.mockLogin(parseInt(selectedUserId, 10), password);
     if (user) {
       onLogin(user);
+    } else {
+      setError('Usuário ou senha inválidos!');
     }
   };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+              <p>Carregando usuários...</p>
+          </div>
+      )
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -32,20 +59,36 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="relative">
-            <UserIcon className="absolute top-1/2 -translate-y-1/2 left-3 h-5 w-5 text-gray-400" />
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-blue-light focus:border-brand-blue-light sm:text-sm"
-            >
-              {USERS.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.role})
-                </option>
-              ))}
-            </select>
+          <div className="space-y-4">
+            <div className="relative">
+              <UserIcon className="absolute top-1/2 -translate-y-1/2 left-3 h-5 w-5 text-gray-400" />
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-blue-light focus:border-brand-blue-light sm:text-sm"
+              >
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="relative">
+                <LockIcon className="absolute top-1/2 -translate-y-1/2 left-3 h-5 w-5 text-gray-400" />
+                <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Senha"
+                    required
+                    className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-blue-light focus:border-brand-blue-light sm:text-sm"
+                />
+            </div>
           </div>
+          
+          {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
           <div>
             <button
               type="submit"

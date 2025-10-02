@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import RequestsListPage from './pages/RequestsListPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import CreateRequestPage from './pages/CreateRequestPage';
+import UserManagementPage from './pages/UserManagementPage';
 import * as api from './services/mockApiService';
 
 const App: React.FC = () => {
@@ -82,6 +83,11 @@ const App: React.FC = () => {
             case 'create-request':
                 if (user) return <CreateRequestPage user={user} onSubmit={handleCreateRequest} />;
                 return null;
+            case 'user-management':
+                 if (user?.role === UserRole.ADMIN) return <UserManagementPage />;
+                 // Redirect non-admins trying to access the page
+                 setCurrentPage('dashboard');
+                 return null;
             default:
                 return <DashboardPage requests={requests} />;
         }

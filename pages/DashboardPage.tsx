@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { MaintenanceRequest } from '../types';
@@ -22,9 +21,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
   const pausedCount = requests.filter(r => r.status === RequestStatus.PAUSED).length;
 
   const statusData = [
-    { name: 'Abertas', count: openCount, fill: '#f97316' },
+    { name: 'Abertas', count: openCount, fill: '#4f46e5' },
     { name: 'Em Andamento', count: inProgressCount, fill: '#3b82f6' },
-    { name: 'Pausadas', count: pausedCount, fill: '#f59e0b' },
+    { name: 'Pausadas', count: pausedCount, fill: '#64748b' },
     { name: 'Concluídas', count: completedCount, fill: '#22c55e' },
   ];
 

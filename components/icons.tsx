@@ -42,3 +42,7 @@ export const ChevronDownIcon = createIcon(
 export const ExternalLinkIcon = createIcon(
     <path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
 );
+
+export const LockIcon = createIcon(
+    <path d="M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13C13.11,13 14,13.89 14,15C14,16.1 13.11,17 12,17M18,8H17V6C17,3.24 14.76,1 12,1C9.24,1 7,3.24 7,6V8H6C4.89,8 4,8.89 4,10V20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20V10C20,8.89 19.11,8 18,8M12,3C13.66,3 15,4.34 15,6V8H9V6C9,4.34 10.34,3 12,3Z" />
+);
