@@ -33,6 +33,32 @@ export const createUser = async (newUserData: Omit<User, 'id'>): Promise<User> =
     return newUser;
 };
 
+export const updateUser = async (userId: number, updateData: Partial<Pick<User, 'name' | 'password' | 'sector'>>): Promise<User> => {
+    await delay(600);
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+        throw new Error("User not found");
+    }
+
+    const originalUser = users[userIndex];
+    const updatedUser = { ...originalUser };
+
+    if (updateData.name) {
+        updatedUser.name = updateData.name;
+    }
+    if (updateData.sector) {
+        updatedUser.sector = updateData.sector;
+    }
+    // Only update password if a new one is provided and it's not an empty string
+    if (updateData.password) {
+        updatedUser.password = updateData.password;
+    }
+
+    users[userIndex] = updatedUser;
+    return updatedUser;
+};
+
+
 export const getRequests = async (): Promise<MaintenanceRequest[]> => {
   await delay(500);
   return [...requests].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

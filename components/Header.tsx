@@ -1,15 +1,21 @@
 
 import React, { useState } from 'react';
-import { UserIcon, ChevronDownIcon, LogoutIcon } from './icons';
+import { UserIcon, ChevronDownIcon, LogoutIcon, CogIcon } from './icons';
 import type { User } from '../types';
 
 interface HeaderProps {
   user: User;
   onLogout: () => void;
+  onNavigate: (page: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const handleNavigation = (page: string) => {
+    onNavigate(page);
+    setDropdownOpen(false);
+  }
 
   return (
     <header className="bg-white shadow-md p-4 flex justify-between items-center fixed top-0 left-64 right-0 z-10">
@@ -34,7 +40,19 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
+                handleNavigation('my-profile');
+              }}
+              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              <CogIcon className="h-5 w-5 mr-3 text-gray-500" />
+              Meu Perfil
+            </a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
                 onLogout();
+                setDropdownOpen(false);
               }}
               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >

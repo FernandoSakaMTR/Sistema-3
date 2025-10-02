@@ -10,6 +10,7 @@ import RequestsListPage from './pages/RequestsListPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import CreateRequestPage from './pages/CreateRequestPage';
 import UserManagementPage from './pages/UserManagementPage';
+import MyProfilePage from './pages/MyProfilePage';
 import * as api from './services/mockApiService';
 
 const App: React.FC = () => {
@@ -67,6 +68,11 @@ const App: React.FC = () => {
         setCurrentPage('my-requests');
     };
 
+    const handleUserUpdate = (updatedUser: User) => {
+        setUser(updatedUser);
+        alert('Perfil atualizado com sucesso!');
+    };
+
     const renderPage = () => {
         if (selectedRequestId && currentPage === 'request-detail' && user) {
             return <RequestDetailPage requestId={selectedRequestId} user={user} onBack={handleBackToList} />;
@@ -85,8 +91,10 @@ const App: React.FC = () => {
                 return null;
             case 'user-management':
                  if (user?.role === UserRole.ADMIN) return <UserManagementPage />;
-                 // Redirect non-admins trying to access the page
-                 setCurrentPage('dashboard');
+                 setCurrentPage('dashboard'); // Redirect non-admins
+                 return null;
+            case 'my-profile':
+                 if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
             default:
                 return <DashboardPage requests={requests} />;
@@ -101,7 +109,7 @@ const App: React.FC = () => {
         <div className="flex h-screen bg-slate-100">
             <Sidebar user={user} currentPage={currentPage} onNavigate={handleNavigation} />
             <div className="flex-1 flex flex-col ml-64">
-                <Header user={user} onLogout={handleLogout} />
+                <Header user={user} onLogout={handleLogout} onNavigate={handleNavigation} />
                 <main className="flex-1 overflow-y-auto mt-20">
                     {loading ? <div className="p-8">Carregando dados...</div> : renderPage()}
                 </main>
