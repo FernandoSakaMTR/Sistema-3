@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
 import { UserRole } from './types';
@@ -22,9 +21,15 @@ const App: React.FC = () => {
 
     const fetchRequests = useCallback(async () => {
         setLoading(true);
-        const data = await api.getRequests();
-        setRequests(data);
-        setLoading(false);
+        try {
+            const data = await api.getRequests();
+            setRequests(data);
+        } catch (error) {
+            console.error("Failed to fetch requests:", error);
+            alert("Não foi possível carregar as requisições. Verifique a conexão com o servidor.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
@@ -62,10 +67,15 @@ const App: React.FC = () => {
     };
     
     const handleCreateRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
-        await api.createRequest(requestData);
-        await fetchRequests();
-        alert('Requisição criada com sucesso!');
-        setCurrentPage('my-requests');
+        try {
+            await api.createRequest(requestData);
+            await fetchRequests();
+            alert('Requisição criada com sucesso!');
+            setCurrentPage('my-requests');
+        } catch (error) {
+            console.error("Failed to create request:", error);
+            alert("Não foi possível criar a requisição. Tente novamente.");
+        }
     };
 
     const handleUserUpdate = (updatedUser: User) => {
@@ -90,7 +100,7 @@ const App: React.FC = () => {
                 if (user) return <CreateRequestPage user={user} onSubmit={handleCreateRequest} />;
                 return null;
             case 'user-management':
-                 if (user?.role === UserRole.ADMIN) return <UserManagementPage />;
+                 if (user?.role === UserRole.ADMIN) return <UserManagementPage user={user} />;
                  setCurrentPage('dashboard'); // Redirect non-admins
                  return null;
             case 'my-profile':

@@ -37,9 +37,15 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const fetchRequest = useCallback(async () => {
         setLoading(true);
-        const data = await getRequestById(requestId);
-        setRequest(data || null);
-        setLoading(false);
+        try {
+            const data = await getRequestById(requestId);
+            setRequest(data || null);
+        } catch(error) {
+            console.error("Failed to fetch request details:", error);
+            setRequest(null);
+        } finally {
+            setLoading(false);
+        }
     }, [requestId]);
 
     useEffect(() => {
@@ -54,8 +60,13 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             reason = prompt(promptMessage) || undefined;
             if(!reason && newStatus !== RequestStatus.COMPLETED) return;
         }
-        await updateRequestStatus(requestId, newStatus, user, reason);
-        fetchRequest();
+        try {
+            await updateRequestStatus(requestId, newStatus, user, reason);
+            fetchRequest();
+        } catch (error) {
+            console.error("Failed to update status:", error);
+            alert("Não foi possível atualizar o status da requisição.");
+        }
     }
 
     if (loading) {
@@ -91,8 +102,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         <DetailItem label="Setor do Requisitante" value={request.requesterSector} />
                         <DetailItem label="Equipamento(s)" value={request.equipment} />
                         <DetailItem label="Tipo de Manutenção" value={request.maintenanceType} />
-                        <DetailItem label="Data da Abertura" value={request.createdAt.toLocaleString()} />
-                        <DetailItem label="Última Atualização" value={request.updatedAt.toLocaleString()} />
+                        <DetailItem label="Data da Abertura" value={new Date(request.createdAt).toLocaleString()} />
+                        <DetailItem label="Última Atualização" value={new Date(request.updatedAt).toLocaleString()} />
                     </div>
                     
                     {/* Coluna 2: Descrição e Manutenção */}
@@ -111,8 +122,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <div className="space-y-6 bg-slate-50 p-6 rounded-lg">
                         <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Execução</h2>
                         <DetailItem label="Responsável" value={request.assignedTo?.name} />
-                        <DetailItem label="Início do Atendimento" value={request.startedAt?.toLocaleString()} />
-                        <DetailItem label="Conclusão do Atendimento" value={request.completedAt?.toLocaleString()} />
+                        <DetailItem label="Início do Atendimento" value={request.startedAt ? new Date(request.startedAt).toLocaleString() : undefined} />
+                        <DetailItem label="Conclusão do Atendimento" value={request.completedAt ? new Date(request.completedAt).toLocaleString() : undefined} />
                         <DetailItem label="Notas da Manutenção">
                              <p className="text-gray-700 whitespace-pre-wrap">{request.maintenanceNotes || 'N/A'}</p>
                         </DetailItem>

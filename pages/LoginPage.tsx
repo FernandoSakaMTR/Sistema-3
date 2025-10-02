@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { User } from '../types';
 import * as api from '../services/mockApiService';
@@ -17,12 +16,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   useEffect(() => {
     const fetchUsers = async () => {
-      const userList = await api.getUsers();
-      setUsers(userList);
-      if (userList.length > 0) {
-        setSelectedUserId(userList[0].id.toString());
+      try {
+        const userList = await api.getUsers();
+        setUsers(userList);
+        if (userList.length > 0) {
+          setSelectedUserId(userList[0].id.toString());
+        }
+      } catch (error) {
+        setError("Falha ao carregar usuários. Verifique se o servidor está online.");
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchUsers();
   }, []);
@@ -30,11 +35,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const user = await api.mockLogin(parseInt(selectedUserId, 10), password);
-    if (user) {
+    try {
+      const user = await api.login(parseInt(selectedUserId, 10), password);
       onLogin(user);
-    } else {
-      setError('Usuário ou senha inválidos!');
+    } catch (err: any) {
+      setError(err.message || 'Usuário ou senha inválidos!');
     }
   };
 

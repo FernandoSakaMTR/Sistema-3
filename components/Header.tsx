@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { UserIcon, ChevronDownIcon, LogoutIcon, CogIcon } from './icons';
 import type { User } from '../types';
+import { ROLE_AVATARS } from '../constants';
 
 interface HeaderProps {
   user: User;
@@ -16,6 +17,8 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
     onNavigate(page);
     setDropdownOpen(false);
   }
+  
+  const avatarUrl = ROLE_AVATARS[user.role];
 
   return (
     <header className="bg-white shadow-md p-4 flex justify-between items-center fixed top-0 left-64 right-0 z-10">
@@ -25,9 +28,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
-          <div className="bg-brand-blue rounded-full h-10 w-10 flex items-center justify-center text-white font-bold">
-            {user.name.charAt(0)}
-          </div>
+          <img src={avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
           <div>
             <p className="font-semibold text-gray-700 text-sm">{user.name}</p>
             <p className="text-gray-500 text-xs">{user.role}</p>
