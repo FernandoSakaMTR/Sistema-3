@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import type { User } from '../types';
 import * as api from '../services/mockApiService';
-import { SECTORS, ROLE_AVATARS } from '../constants';
+import { SECTORS, ROLE_ICONS } from '../constants';
 
 interface MyProfilePageProps {
     user: User;
@@ -14,7 +15,7 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ user, onUserUpdate }) => 
     const [newPassword, setNewPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const avatarUrl = ROLE_AVATARS[user.role];
+    const IconComponent = ROLE_ICONS[user.role];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,7 +48,9 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ user, onUserUpdate }) => 
             <div className="max-w-2xl">
                 <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md">
                     <div className="flex justify-center mb-6">
-                        <img src={avatarUrl} alt={user.name} className="h-24 w-24 rounded-full object-cover shadow-md" />
+                         <div className="h-24 w-24 rounded-full bg-slate-200 flex items-center justify-center shadow-md">
+                            <IconComponent className="h-14 w-14 text-slate-600" />
+                        </div>
                     </div>
                     <div className="space-y-6">
                         <div>

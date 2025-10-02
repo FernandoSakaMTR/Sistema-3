@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User } from '../types';
 import { UserRole } from '../types';
 import * as api from '../services/mockApiService';
-import { ROLE_AVATARS } from '../constants';
+import { ROLE_ICONS } from '../constants';
 import { TrashIcon, PencilIcon } from '../components/icons';
 
 interface UserManagementPageProps {
@@ -190,18 +191,39 @@ const UserManagementPage: React.FC<UserManagementPageProps> = ({ user: currentUs
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {users.map((user) => (
-                                            <tr key={user.id}>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                  <img className="h-10 w-10 rounded-full object-cover" src={ROLE_AVATARS[user.role]} alt={user.name} />
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.name}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.sector}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.role}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className="flex items-center justify-end space-x-4">
-                                                        {currentUser.id !== user.id && (
-                                                            <>
+                                        {users.map((user) => {
+                                            const IconComponent = ROLE_ICONS[user.role];
+                                            return (
+                                                <tr key={user.id}>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                      <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
+                                                          <IconComponent className="h-6 w-6 text-slate-600" />
+                                                      </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.name}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.sector}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.role}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end space-x-4">
+                                                            {currentUser.id !== user.id && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => setEditingUser(user)}
+                                                                        className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                                                        title="Editar Usuário"
+                                                                    >
+                                                                        <PencilIcon className="h-5 w-5" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteUser(user.id)} 
+                                                                        className="text-red-600 hover:text-red-800 transition-colors"
+                                                                        title="Excluir Usuário"
+                                                                    >
+                                                                        <TrashIcon className="h-5 w-5" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                             {currentUser.id === user.id && (
                                                                 <button
                                                                     onClick={() => setEditingUser(user)}
                                                                     className="text-indigo-600 hover:text-indigo-900 transition-colors"
@@ -209,28 +231,12 @@ const UserManagementPage: React.FC<UserManagementPageProps> = ({ user: currentUs
                                                                 >
                                                                     <PencilIcon className="h-5 w-5" />
                                                                 </button>
-                                                                <button 
-                                                                    onClick={() => handleDeleteUser(user.id)} 
-                                                                    className="text-red-600 hover:text-red-800 transition-colors"
-                                                                    title="Excluir Usuário"
-                                                                >
-                                                                    <TrashIcon className="h-5 w-5" />
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                         {currentUser.id === user.id && (
-                                                            <button
-                                                                onClick={() => setEditingUser(user)}
-                                                                className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                                                title="Editar Usuário"
-                                                            >
-                                                                <PencilIcon className="h-5 w-5" />
-                                                            </button>
-                                                         )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                             )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

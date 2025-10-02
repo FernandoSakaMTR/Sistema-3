@@ -1,13 +1,15 @@
-// FIX: Changed 'import type' to a regular 'import' because enums are used as values.
 import { User, MaintenanceRequest, UserRole, RequestStatus, MaintenanceType, EquipmentStatus } from './types';
+import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon } from '../components/icons';
+import React from 'react';
+
 
 export const SECTORS: string[] = ['Rosqueadeira', 'Prensa', 'Expedição', 'Outro'];
 
-export const ROLE_AVATARS: Record<UserRole, string> = {
-  [UserRole.ADMIN]: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop',
-  [UserRole.MANAGER]: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400&auto=format&fit=crop',
-  [UserRole.MAINTENANCE]: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=400&auto=format&fit=crop',
-  [UserRole.REQUESTER]: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=400&auto=format&fit=crop'
+export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>>> = {
+  [UserRole.ADMIN]: ShieldCheckIcon,
+  [UserRole.MANAGER]: BriefcaseIcon,
+  [UserRole.MAINTENANCE]: WrenchIcon,
+  [UserRole.REQUESTER]: UserIcon,
 };
 
 export const STATUS_COLORS: Record<RequestStatus, string> = {

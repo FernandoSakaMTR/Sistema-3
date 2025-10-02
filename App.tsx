@@ -18,6 +18,8 @@ const App: React.FC = () => {
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+    const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const fetchRequests = useCallback(async () => {
         setLoading(true);
@@ -35,7 +37,6 @@ const App: React.FC = () => {
     useEffect(() => {
         if (user) {
             fetchRequests();
-            // Default page based on role
             const defaultPage = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) ? 'dashboard' : 'my-requests';
             setCurrentPage(defaultPage);
         }
@@ -50,10 +51,13 @@ const App: React.FC = () => {
         setCurrentPage('dashboard');
     };
 
-
     const handleNavigation = (page: string) => {
         setCurrentPage(page);
         setSelectedRequestId(null);
+    };
+    
+    const toggleDesktopSidebar = () => {
+        setIsDesktopSidebarCollapsed(prevState => !prevState);
     };
 
     const handleSelectRequest = (id: string) => {
@@ -116,14 +120,35 @@ const App: React.FC = () => {
     }
 
     return (
-        <div className="flex h-screen bg-slate-100">
-            <Sidebar user={user} currentPage={currentPage} onNavigate={handleNavigation} />
-            <div className="flex-1 flex flex-col ml-64">
-                <Header user={user} onLogout={handleLogout} onNavigate={handleNavigation} />
-                <main className="flex-1 overflow-y-auto mt-20">
+        <div className="h-screen bg-slate-100 overflow-hidden">
+            <Sidebar 
+              user={user} 
+              currentPage={currentPage} 
+              onNavigate={handleNavigation} 
+              isDesktopCollapsed={isDesktopSidebarCollapsed}
+              isMobileOpen={isMobileMenuOpen}
+              onMobileClose={() => setMobileMenuOpen(false)}
+            />
+            <div className={`h-full flex-1 flex flex-col transition-all duration-300 ease-in-out ${isDesktopSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+                <Header 
+                    user={user} 
+                    onLogout={handleLogout} 
+                    onNavigate={handleNavigation}
+                    onToggleDesktopSidebar={toggleDesktopSidebar}
+                    isDesktopSidebarCollapsed={isDesktopSidebarCollapsed} 
+                    onToggleMobileSidebar={() => setMobileMenuOpen(true)}
+                />
+                <main className="flex-1 overflow-y-auto pt-20">
                     {loading ? <div className="p-8">Carregando dados...</div> : renderPage()}
                 </main>
             </div>
+            {/* Mobile menu backdrop */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                ></div>
+            )}
         </div>
     );
 };

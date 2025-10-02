@@ -12,7 +12,7 @@ interface RequestsListPageProps {
 
 const RequestCard: React.FC<{ request: MaintenanceRequest, onSelect: () => void }> = ({ request, onSelect }) => (
     <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={onSelect}>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col items-start gap-y-2 sm:flex-row sm:items-start sm:justify-between sm:gap-y-0">
             <div className="flex items-center gap-x-3">
                 <StatusBadge status={request.status} />
                 <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
