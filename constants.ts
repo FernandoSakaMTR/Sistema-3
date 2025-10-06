@@ -13,19 +13,19 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
 };
 
 export const STATUS_COLORS: Record<RequestStatus, string> = {
-  [RequestStatus.OPEN]: 'bg-indigo-200 text-indigo-800',
-  [RequestStatus.VIEWED]: 'bg-indigo-200 text-indigo-800',
-  [RequestStatus.ACCEPTED]: 'bg-indigo-200 text-indigo-800',
-  [RequestStatus.IN_PROGRESS]: 'bg-blue-200 text-blue-800',
-  [RequestStatus.PAUSED]: 'bg-yellow-200 text-yellow-800',
-  [RequestStatus.COMPLETED]: 'bg-teal-200 text-teal-800',
+  [RequestStatus.OPEN]: 'bg-status-open text-white',
+  [RequestStatus.VIEWED]: 'bg-status-open text-white',
+  [RequestStatus.ACCEPTED]: 'bg-status-open text-white',
+  [RequestStatus.IN_PROGRESS]: 'bg-status-progress text-black',
+  [RequestStatus.PAUSED]: 'bg-status-paused text-white',
+  [RequestStatus.COMPLETED]: 'bg-status-completed text-white',
   [RequestStatus.CANCELED]: 'bg-slate-500 text-white'
 };
 
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
-  [EquipmentStatus.OPERATIONAL]: 'bg-green-200 text-green-800',
-  [EquipmentStatus.PARTIAL]: 'bg-orange-200 text-orange-800',
-  [EquipmentStatus.INOPERATIVE]: 'bg-red-500 text-white'
+  [EquipmentStatus.OPERATIONAL]: 'bg-status-completed text-white',
+  [EquipmentStatus.PARTIAL]: 'bg-status-partial text-black',
+  [EquipmentStatus.INOPERATIVE]: 'bg-status-paused text-white'
 };
 
 export let USERS: User[] = [
