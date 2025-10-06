@@ -12,20 +12,22 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
   [UserRole.REQUESTER]: UserIcon,
 };
 
+// Low priority colors
 export const STATUS_COLORS: Record<RequestStatus, string> = {
-  [RequestStatus.OPEN]: 'bg-status-open text-white',
-  [RequestStatus.VIEWED]: 'bg-status-open text-white',
-  [RequestStatus.ACCEPTED]: 'bg-status-open text-white',
-  [RequestStatus.IN_PROGRESS]: 'bg-status-progress text-black',
-  [RequestStatus.PAUSED]: 'bg-status-paused text-white',
-  [RequestStatus.COMPLETED]: 'bg-status-completed text-white',
-  [RequestStatus.CANCELED]: 'bg-slate-500 text-white'
+  [RequestStatus.OPEN]: 'bg-ticket-open text-white',
+  [RequestStatus.VIEWED]: 'bg-ticket-open text-white',
+  [RequestStatus.ACCEPTED]: 'bg-ticket-open text-white',
+  [RequestStatus.IN_PROGRESS]: 'bg-ticket-progress text-white',
+  [RequestStatus.PAUSED]: 'bg-ticket-paused text-white',
+  [RequestStatus.COMPLETED]: 'bg-ticket-completed text-white',
+  [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
 };
 
+// High priority colors
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
-  [EquipmentStatus.OPERATIONAL]: 'bg-status-completed text-white',
-  [EquipmentStatus.PARTIAL]: 'bg-status-partial text-black',
-  [EquipmentStatus.INOPERATIVE]: 'bg-status-paused text-white'
+  [EquipmentStatus.OPERATIONAL]: 'bg-machine-ok text-white',
+  [EquipmentStatus.PARTIAL]: 'bg-machine-partial text-black',
+  [EquipmentStatus.INOPERATIVE]: 'bg-machine-down text-white'
 };
 
 export let USERS: User[] = [
