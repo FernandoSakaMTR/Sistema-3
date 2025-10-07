@@ -15,7 +15,6 @@ export interface User {
 
 export enum RequestStatus {
   IN_PROGRESS = 'Em atendimento',
-  PAUSED = 'Atendimento Parado',
   COMPLETED = 'Concluída',
   CANCELED = 'Cancelada'
 }
@@ -50,7 +49,6 @@ export interface MaintenanceRequest {
   completedAt?: Date;
   maintenanceNotes?: string;
   materialsUsed?: string[];
-  pauseReason?: string;
   cancelReason?: string;
   attachments: File[];
 }

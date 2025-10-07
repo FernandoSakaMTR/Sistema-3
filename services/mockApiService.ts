@@ -159,9 +159,6 @@ export const updateRequestStatus = async (id: string, status: RequestStatus, use
         updatedRequest.startedAt = new Date();
         updatedRequest.assignedTo = user;
     }
-    if (status === RequestStatus.PAUSED) {
-        updatedRequest.pauseReason = reason;
-    }
     if (status === RequestStatus.COMPLETED) {
         updatedRequest.completedAt = new Date();
         updatedRequest.maintenanceNotes = reason;

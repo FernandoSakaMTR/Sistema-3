@@ -36,14 +36,33 @@ const ReasonBox: React.FC<{ title: string; reason: string; color: 'red' | 'yello
     );
 };
 
-// Modal Configuration
-// Actions that require user input (justification/notes).
 const MODAL_CONFIG: Record<RequestStatus, { title: string; placeholder: string; isReasonRequired: boolean }> = {
-    [RequestStatus.CANCELED]: { title: 'Cancelar Pedido', placeholder: 'Por favor, descreva o motivo do cancelamento*', isReasonRequired: true },
+    [RequestStatus.CANCELED]: { title: 'Motivo do Cancelamento', placeholder: 'Por favor, descreva o motivo do cancelamento*', isReasonRequired: true },
     [RequestStatus.COMPLETED]: { title: 'Descreva o que foi feito', placeholder: 'Descreva o serviço realizado para constar nas notas da manutenção*', isReasonRequired: true },
-    // Other actions do not require a modal and will be executed immediately.
     [RequestStatus.IN_PROGRESS]: { title: '', placeholder: '', isReasonRequired: false },
-    [RequestStatus.PAUSED]: { title: '', placeholder: '', isReasonRequired: false },
+};
+
+const ActionModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}> = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+                    <button onClick={onClose}>
+                        <XIcon className="h-6 w-6 text-gray-500 hover:text-gray-800" />
+                    </button>
+                </div>
+                {children}
+            </div>
+        </div>
+    );
 };
 
 
@@ -52,8 +71,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [loading, setLoading] = useState(true);
     const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
 
-    // State for the new modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isReasonModalOpen, setIsReasonModalOpen] = useState(false);
+    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [currentAction, setCurrentAction] = useState<RequestStatus | null>(null);
     const [reason, setReason] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,33 +102,34 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         }
     }, [request]);
 
-    const handleOpenModal = (action: RequestStatus) => {
-        // For simple actions without a modal title, execute immediately.
-        if (!MODAL_CONFIG[action] || !MODAL_CONFIG[action].title) {
-            handleConfirmAction(action);
-            return;
+    const handleActionSelect = (action: RequestStatus) => {
+        setIsActionModalOpen(false); // Close the action selection modal
+        
+        const config = MODAL_CONFIG[action];
+        if (config.title) {
+            setCurrentAction(action);
+            setReason('');
+            setIsReasonModalOpen(true);
+        } else {
+            handleConfirmAction(action, '');
         }
-        setCurrentAction(action);
-        setReason(''); // Reset reason on open
-        setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
+    const handleCloseReasonModal = () => {
         if (isSubmitting) return;
-        setIsModalOpen(false);
+        setIsReasonModalOpen(false);
         setCurrentAction(null);
     };
 
-    const handleConfirmAction = async (actionToConfirm?: RequestStatus) => {
+    const handleConfirmAction = async (actionToConfirm?: RequestStatus, reasonToSubmit?: string) => {
         const action = actionToConfirm || currentAction;
         if (!action) return;
 
         setIsSubmitting(true);
         try {
-            await updateRequestStatus(requestId, action, user, reason || undefined);
-            // Atualiza tanto a lista principal (no App) quanto os detalhes desta página
+            await updateRequestStatus(requestId, action, user, reasonToSubmit ?? reason);
             await Promise.all([fetchRequest(), onRequestUpdate()]);
-            handleCloseModal();
+            handleCloseReasonModal();
         } catch (error) {
             console.error("Failed to update status:", error);
             alert("Não foi possível atualizar o status do pedido.");
@@ -137,45 +157,67 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const modalConfig = currentAction ? MODAL_CONFIG[currentAction] : null;
     const isConfirmDisabled = isSubmitting || (modalConfig?.isReasonRequired && !reason.trim());
+    
+    const renderActionButtons = () => {
+        if (!canTakeAction) return null;
+        
+        switch (request.status) {
+            case undefined: // New
+                return <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="w-full text-left bg-blue-500 text-white px-4 py-3 rounded-md hover:bg-blue-600 transition-colors">Iniciar Atendimento</button>;
+            case RequestStatus.IN_PROGRESS:
+                return (
+                    <div className="space-y-3">
+                        <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="w-full text-left bg-green-500 text-white px-4 py-3 rounded-md hover:bg-green-600 transition-colors">Concluir</button>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
 
     return (
         <div className="p-8">
-            {/* Action Confirmation Modal */}
-            {isModalOpen && modalConfig && (
-                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-gray-800">{modalConfig.title}</h2>
-                            <button onClick={handleCloseModal} disabled={isSubmitting}>
-                                <XIcon className="h-6 w-6 text-gray-500 hover:text-gray-800" />
-                            </button>
-                        </div>
-                        <textarea
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            placeholder={modalConfig.placeholder}
-                            rows={4}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                        <div className="flex justify-end pt-4 space-x-3">
-                            <button 
-                                type="button" 
-                                onClick={handleCloseModal}
-                                disabled={isSubmitting}
-                                className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Cancelar
-                            </button>
-                            <button 
-                                type="button" 
-                                onClick={() => handleConfirmAction()} 
-                                disabled={isConfirmDisabled}
-                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                {isSubmitting ? 'Confirmando...' : 'Confirmar'}
-                            </button>
-                        </div>
-                    </div>
-                 </div>
-            )}
+            <ActionModal
+                isOpen={isReasonModalOpen && !!modalConfig}
+                onClose={handleCloseReasonModal}
+                title={modalConfig?.title || ''}
+            >
+                <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder={modalConfig?.placeholder}
+                    rows={4}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <div className="flex justify-end pt-4 space-x-3">
+                    <button 
+                        type="button" 
+                        onClick={handleCloseReasonModal}
+                        disabled={isSubmitting}
+                        className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Cancelar
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={() => handleConfirmAction()} 
+                        disabled={isConfirmDisabled}
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Confirmando...' : 'Confirmar'}
+                    </button>
+                </div>
+            </ActionModal>
+
+            <ActionModal
+                isOpen={isActionModalOpen}
+                onClose={() => setIsActionModalOpen(false)}
+                title="Atualizar Status do Pedido"
+            >
+                <div className="space-y-3">
+                    {renderActionButtons()}
+                    <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="w-full text-left bg-red-500 text-white px-4 py-3 rounded-md hover:bg-red-600 transition-colors">Cancelar</button>
+                </div>
+            </ActionModal>
             
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <div>
@@ -241,9 +283,6 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         {isCanceled && request.cancelReason && (
                            <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
                         )}
-                        {request.status === RequestStatus.PAUSED && request.pauseReason && (
-                            <ReasonBox title="Motivo da Pausa" reason={request.pauseReason} color="yellow" />
-                        )}
                     </div>
 
                     {/* Coluna 3: Detalhes da Execução */}
@@ -260,16 +299,16 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
                 {canPerformAnyAction && (
                     <div className="border-t mt-8 pt-6">
-                        <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações</h3>
+                        <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações Disponíveis</h3>
                         <div className="flex flex-wrap gap-4">
-                            {/* Maintenance Actions */}
-                            {canTakeAction && !request.status && <button onClick={() => handleOpenModal(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Iniciar Atendimento</button>}
-                            {canTakeAction && request.status === RequestStatus.IN_PROGRESS && <button onClick={() => handleOpenModal(RequestStatus.PAUSED)} className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">Pausar</button>}
-                            {canTakeAction && request.status === RequestStatus.IN_PROGRESS && <button onClick={() => handleOpenModal(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">Concluir</button>}
-                            {canTakeAction && request.status === RequestStatus.PAUSED && <button onClick={() => handleOpenModal(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Retomar Atendimento</button>}
-                            {canTakeAction && (!request.status || request.status === RequestStatus.PAUSED || request.status === RequestStatus.IN_PROGRESS) && <button onClick={() => handleOpenModal(RequestStatus.CANCELED)} className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Cancelar Pedido</button>}
-                            
-                            {/* Requester Actions */}
+                            {canTakeAction && (
+                                <button
+                                    onClick={() => setIsActionModalOpen(true)}
+                                    className="bg-brand-blue text-white px-6 py-2 rounded-md hover:bg-brand-blue-dark transition-colors shadow-md"
+                                >
+                                    Atualizar Status
+                                </button>
+                            )}
                             {canEditRequest && (
                                 <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800">Editar Pedido</button>
                             )}

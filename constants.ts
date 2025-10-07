@@ -15,7 +15,6 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
 // Low priority colors
 export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.IN_PROGRESS]: 'text-brand-blue',
-  [RequestStatus.PAUSED]: 'text-gray-600',
   [RequestStatus.COMPLETED]: 'bg-ticket-completed text-white',
   [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
 };
@@ -95,23 +94,6 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       completedAt: new Date(2023, 9, 29, 11, 0),
       maintenanceNotes: 'Fonte do computador queimada. Realizada a troca da fonte e testes de inicialização. Sistema operacional funcionando normalmente.',
       attachments: [],
-    },
-    {
-        id: 'MAN-004',
-        title: 'Esteira transportadora com ruído',
-        description: 'A esteira da linha 2 está com um ruído estranho no motor.',
-        status: RequestStatus.PAUSED,
-        equipmentStatus: EquipmentStatus.PARTIAL,
-        requester: USERS[1],
-        requesterSector: 'Prensa',
-        equipment: ['Esteira-02'],
-        maintenanceType: MaintenanceType.MECHANICAL,
-        createdAt: new Date(2023, 10, 3, 9, 0),
-        updatedAt: new Date(2023, 10, 3, 15, 30),
-        assignedTo: USERS[2],
-        startedAt: new Date(2023, 10, 3, 14, 0),
-        pauseReason: 'Aguardando peça (rolamento XYZ) chegar do almoxarifado.',
-        attachments: [],
     },
     {
       id: 'MAN-005',

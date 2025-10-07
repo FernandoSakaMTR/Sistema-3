@@ -2,7 +2,7 @@ import React from 'react';
 import type { RequestStatus } from '../types';
 import { RequestStatus as StatusEnum } from '../types';
 import { STATUS_COLORS } from '../constants';
-import { CheckIcon, XIcon, PauseIcon, WrenchIcon, PlusIcon } from './icons';
+import { CheckIcon, XIcon, WrenchIcon, PlusIcon } from './icons';
 
 interface StatusBadgeProps {
   status?: RequestStatus;
@@ -10,7 +10,6 @@ interface StatusBadgeProps {
 
 const statusIcons: Record<RequestStatus, React.ReactNode> = {
     [StatusEnum.IN_PROGRESS]: <WrenchIcon className="h-3.5 w-3.5" />,
-    [StatusEnum.PAUSED]: <PauseIcon className="h-3.5 w-3.5" />,
     [StatusEnum.COMPLETED]: <CheckIcon className="h-3.5 w-3.5" />,
     [StatusEnum.CANCELED]: <XIcon className="h-3.5 w-3.5" />,
 };

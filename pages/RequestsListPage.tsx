@@ -132,7 +132,7 @@ const RequestsListPage: React.FC<RequestsListPageProps> = ({ title, requests, on
     }
 
     const newRequests = requests.filter(r => !r.status);
-    const openRequests = requests.filter(r => r.status === RequestStatus.IN_PROGRESS || r.status === RequestStatus.PAUSED);
+    const openRequests = requests.filter(r => r.status === RequestStatus.IN_PROGRESS);
     const completedRequests = requests
         .filter(r => r.status === RequestStatus.COMPLETED || r.status === RequestStatus.CANCELED)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());

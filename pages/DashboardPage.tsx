@@ -1,7 +1,3 @@
-
-
-
-
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell } from 'recharts';
 import type { MaintenanceRequest } from '../types';
@@ -23,12 +19,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
   const newCount = requests.filter(r => !r.status).length;
   const inProgressCount = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
   const completedCount = requests.filter(r => r.status === RequestStatus.COMPLETED).length;
-  const pausedCount = requests.filter(r => r.status === RequestStatus.PAUSED).length;
 
   const statusData = [
     { name: 'Novas', count: newCount, fill: '#95A5A6' },
     { name: 'Em Andamento', count: inProgressCount, fill: '#3498DB' },
-    { name: 'Atend. Parados', count: pausedCount, fill: '#95A5A6' },
     { name: 'Concluídas', count: completedCount, fill: '#7DCEA0' },
   ];
 
@@ -76,11 +70,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard title="Novos Pedidos" value={newCount} color="text-gray-500" />
         <StatCard title="Em Andamento" value={inProgressCount} color="text-ticket-progress" />
         <StatCard title="Concluídas" value={completedCount} color="text-ticket-completed" />
-        <StatCard title="Atendimentos Parados" value={pausedCount} color="text-ticket-paused" />
       </div>
 
       {/* Gráfico de Pedidos por Status */}
