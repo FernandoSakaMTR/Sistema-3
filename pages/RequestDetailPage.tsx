@@ -161,10 +161,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const isOwner = user.id === request.requester.id;
     const isEditable = !request.status;
     const isCanceled = request.status === RequestStatus.CANCELED;
+    const isCompleted = request.status === RequestStatus.COMPLETED;
+    const isFinalized = isCompleted || isCanceled;
     
     const canEditRequest = isOwner && isEditable;
     const canDeleteRequestAsRequester = isOwner && isEditable && user.role !== UserRole.MAINTENANCE && user.role !== UserRole.ADMIN;
-    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && request.status !== RequestStatus.COMPLETED && !isCanceled;
+    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isCompleted && !isCanceled;
 
     const modalConfig = currentAction ? MODAL_CONFIG[currentAction] : null;
     const isConfirmDisabled = isSubmitting || (modalConfig?.isReasonRequired && !reason.trim());
@@ -233,7 +235,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <p className="text-gray-500">{request.id}</p>
                 </div>
                 <div>
-                    {request.status === RequestStatus.COMPLETED ? (
+                    {isCompleted ? (
                         <div className="flex items-center gap-x-3 bg-ticket-completed text-white px-4 sm:px-6 py-2 rounded-lg shadow-lg">
                             <CheckIcon className="h-6 w-6 sm:h-8 sm:w-8" />
                             <span className="text-xl sm:text-2xl font-bold">Concluída</span>
@@ -248,22 +250,20 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             </div>
             
             <div className="bg-white p-8 rounded-lg shadow-md">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Coluna 1: Informações do Pedido */}
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Detalhes do Pedido</h2>
-                        <DetailItem label="Solicitante" value={request.requester.name} />
-                        <DetailItem label="Setor do Solicitante" value={request.requesterSector} />
-                        <DetailItem label="Equipamento(s)" value={request.equipment} />
-                        <DetailItem label="Tipo de Manutenção" value={request.maintenanceType} />
-                        <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
-                    </div>
-                    
-                    {/* Coluna 2: Descrição e Manutenção */}
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Descrição e Anexos</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 border-b pb-6 mb-8">
+                    <DetailItem label="Solicitante" value={request.requester.name} />
+                    <DetailItem label="Setor" value={request.requesterSector} />
+                    <DetailItem label="Equipamento(s)" value={request.equipment} />
+                    <DetailItem label="Tipo" value={request.maintenanceType} />
+                    <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+                    {/* Description Section */}
+                    <div className={`${isFinalized ? 'lg:col-span-3' : 'lg:col-span-5'} space-y-6`}>
+                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Descrição do Problema e Anexos</h2>
                         <DetailItem label="O que está ocorrendo?">
-                            <p className="text-gray-700 whitespace-pre-wrap">{request.description}</p>
+                            <p className="text-xl text-gray-900 whitespace-pre-wrap leading-relaxed">{request.description}</p>
                         </DetailItem>
                         <DetailItem label="Anexos">
                             {request.attachments && request.attachments.length > 0 ? (
@@ -291,16 +291,18 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         )}
                     </div>
 
-                    {/* Coluna 3: Detalhes da Manutenção */}
-                    <div className="space-y-6 bg-slate-100 p-6 rounded-lg">
-                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Manutenção</h2>
-                        <DetailItem label="Responsável" value={request.assignedTo?.name} />
-                        <DetailItem label="Início do Atendimento" value={formatDate(request.startedAt)} />
-                        <DetailItem label="Conclusão do Atendimento" value={formatDate(request.completedAt)} />
-                        <DetailItem label="Notas da Manutenção">
-                             <p className="text-gray-700 whitespace-pre-wrap">{request.maintenanceNotes || 'N/A'}</p>
-                        </DetailItem>
-                    </div>
+                    {/* Maintenance Section */}
+                    {isFinalized && (
+                        <div className="lg:col-span-2 space-y-6 bg-slate-100 p-6 rounded-lg h-fit">
+                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Manutenção</h2>
+                            <DetailItem label="Responsável" value={request.assignedTo?.name} />
+                            <DetailItem label="Início do Atendimento" value={formatDate(request.startedAt)} />
+                            <DetailItem label="Conclusão do Atendimento" value={formatDate(request.completedAt)} />
+                            <DetailItem label="Notas da Manutenção">
+                                 <p className="text-gray-700 whitespace-pre-wrap">{request.maintenanceNotes || 'N/A'}</p>
+                            </DetailItem>
+                        </div>
+                    )}
                 </div>
 
                 {canPerformAnyAction && (
