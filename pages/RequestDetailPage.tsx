@@ -16,6 +16,17 @@ interface RequestDetailPageProps {
     onRequestUpdate: () => Promise<void>;
 }
 
+const formatDate = (date: Date | undefined | null): string | undefined => {
+    if (!date) return undefined;
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
 const DetailItem: React.FC<{ label: string; value?: string | string[] | null, children?: React.ReactNode }> = ({ label, value, children }) => (
     <div>
         <p className="text-sm font-medium text-gray-500">{label}</p>
@@ -158,23 +169,6 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const modalConfig = currentAction ? MODAL_CONFIG[currentAction] : null;
     const isConfirmDisabled = isSubmitting || (modalConfig?.isReasonRequired && !reason.trim());
     
-    const renderActionButtons = () => {
-        if (!canTakeAction) return null;
-        
-        switch (request.status) {
-            case undefined: // New
-                return <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="w-full text-left bg-blue-500 text-white px-4 py-3 rounded-md hover:bg-blue-600 transition-colors">Iniciar Atendimento</button>;
-            case RequestStatus.IN_PROGRESS:
-                return (
-                    <div className="space-y-3">
-                        <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="w-full text-left bg-green-500 text-white px-4 py-3 rounded-md hover:bg-green-600 transition-colors">Concluir</button>
-                    </div>
-                );
-            default:
-                return null;
-        }
-    };
-
 
     return (
         <div className="p-8">
@@ -213,9 +207,22 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                 onClose={() => setIsActionModalOpen(false)}
                 title="Atualizar Status do Pedido"
             >
-                <div className="space-y-3">
-                    {renderActionButtons()}
-                    <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="w-full text-left bg-red-500 text-white px-4 py-3 rounded-md hover:bg-red-600 transition-colors">Cancelar</button>
+                <div className="flex flex-wrap justify-center gap-4 pt-4">
+                    {request.status === undefined && (
+                        <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors">
+                            Iniciar Atendimento
+                        </button>
+                    )}
+                    {request.status === RequestStatus.IN_PROGRESS && (
+                         <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors">
+                            Concluir
+                        </button>
+                    )}
+                    {(request.status === undefined || request.status === RequestStatus.IN_PROGRESS) && (
+                         <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors">
+                            Cancelar
+                        </button>
+                    )}
                 </div>
             </ActionModal>
             
@@ -249,8 +256,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         <DetailItem label="Setor do Solicitante" value={request.requesterSector} />
                         <DetailItem label="Equipamento(s)" value={request.equipment} />
                         <DetailItem label="Tipo de Manutenção" value={request.maintenanceType} />
-                        <DetailItem label="Data da Abertura" value={new Date(request.createdAt).toLocaleString()} />
-                        <DetailItem label="Última Atualização" value={new Date(request.updatedAt).toLocaleString()} />
+                        <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
                     </div>
                     
                     {/* Coluna 2: Descrição e Manutenção */}
@@ -285,12 +291,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         )}
                     </div>
 
-                    {/* Coluna 3: Detalhes da Execução */}
-                    <div className="space-y-6 bg-slate-50 p-6 rounded-lg">
-                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Execução</h2>
+                    {/* Coluna 3: Detalhes da Manutenção */}
+                    <div className="space-y-6 bg-slate-100 p-6 rounded-lg">
+                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Manutenção</h2>
                         <DetailItem label="Responsável" value={request.assignedTo?.name} />
-                        <DetailItem label="Início do Atendimento" value={request.startedAt ? new Date(request.startedAt).toLocaleString() : undefined} />
-                        <DetailItem label="Conclusão do Atendimento" value={request.completedAt ? new Date(request.completedAt).toLocaleString() : undefined} />
+                        <DetailItem label="Início do Atendimento" value={formatDate(request.startedAt)} />
+                        <DetailItem label="Conclusão do Atendimento" value={formatDate(request.completedAt)} />
                         <DetailItem label="Notas da Manutenção">
                              <p className="text-gray-700 whitespace-pre-wrap">{request.maintenanceNotes || 'N/A'}</p>
                         </DetailItem>
