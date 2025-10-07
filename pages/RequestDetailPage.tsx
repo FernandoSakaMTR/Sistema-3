@@ -293,14 +293,18 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
                     {/* Maintenance Section */}
                     {isFinalized && (
-                        <div className="lg:col-span-2 space-y-6 bg-slate-100 p-6 rounded-lg h-fit">
-                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Manutenção</h2>
-                            <DetailItem label="Responsável" value={request.assignedTo?.name} />
-                            <DetailItem label="Início do Atendimento" value={formatDate(request.startedAt)} />
-                            <DetailItem label="Conclusão do Atendimento" value={formatDate(request.completedAt)} />
-                            <DetailItem label="Notas da Manutenção">
-                                 <p className="text-gray-700 whitespace-pre-wrap">{request.maintenanceNotes || 'N/A'}</p>
-                            </DetailItem>
+                        <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
+                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <DetailItem label="Responsável" value={request.assignedTo?.name} />
+                                <DetailItem label="Início" value={formatDate(request.startedAt)} />
+                                <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
+                            </div>
+                            <div className="pt-2">
+                                <DetailItem label="Notas da Manutenção">
+                                    <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
+                                </DetailItem>
+                            </div>
                         </div>
                     )}
                 </div>
