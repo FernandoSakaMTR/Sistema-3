@@ -1,4 +1,7 @@
 
+
+
+
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell } from 'recharts';
 import type { MaintenanceRequest } from '../types';
@@ -16,14 +19,14 @@ const StatCard: React.FC<{ title: string; value: string | number; color: string 
 );
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
-  // Dados para o gráfico de status de requisições
-  const openCount = requests.filter(r => r.status === RequestStatus.OPEN).length;
+  // Dados para o gráfico de status de pedidos
+  const newCount = requests.filter(r => !r.status).length;
   const inProgressCount = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
   const completedCount = requests.filter(r => r.status === RequestStatus.COMPLETED).length;
   const pausedCount = requests.filter(r => r.status === RequestStatus.PAUSED).length;
 
   const statusData = [
-    { name: 'Abertas', count: openCount, fill: '#5DADE2' },
+    { name: 'Novas', count: newCount, fill: '#95A5A6' },
     { name: 'Em Andamento', count: inProgressCount, fill: '#3498DB' },
     { name: 'Atend. Parados', count: pausedCount, fill: '#95A5A6' },
     { name: 'Concluídas', count: completedCount, fill: '#7DCEA0' },
@@ -35,7 +38,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
   const inoperativeCount = requests.filter(r => r.equipmentStatus === EquipmentStatus.INOPERATIVE).length;
   
   const equipmentStatusData = [
-    { name: 'Funcionando', value: operationalCount, fill: '#27AE60' },
+    { name: 'Funcionando', value: operationalCount, fill: '#16a34a' },
     { name: 'Parcialmente Funcionando', value: partialCount, fill: '#F1C40F' },
     { name: 'Inoperante', value: inoperativeCount, fill: '#E74C3C' },
   ];
@@ -74,13 +77,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Requisições Abertas" value={openCount} color="text-ticket-open" />
+        <StatCard title="Novos Pedidos" value={newCount} color="text-gray-500" />
         <StatCard title="Em Andamento" value={inProgressCount} color="text-ticket-progress" />
         <StatCard title="Concluídas" value={completedCount} color="text-ticket-completed" />
         <StatCard title="Atendimentos Parados" value={pausedCount} color="text-ticket-paused" />
       </div>
 
-      {/* Gráfico de Requisições por Status */}
+      {/* Gráfico de Pedidos por Status */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold text-gray-700 mb-4">Status dos Pedidos</h2>
         <div style={{ width: '100%', height: 400 }}>

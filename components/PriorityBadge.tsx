@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import type { EquipmentStatus } from '../types';
 import { EQUIPMENT_STATUS_COLORS } from '../constants';

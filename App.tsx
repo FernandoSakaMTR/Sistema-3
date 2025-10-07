@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
-import { UserRole } from './types';
+import { UserRole, RequestStatus } from './types';
 import LoginPage from './pages/LoginPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -28,7 +28,7 @@ const App: React.FC = () => {
             setRequests(data);
         } catch (error) {
             console.error("Failed to fetch requests:", error);
-            alert("Não foi possível carregar as requisições. Verifique a conexão com o servidor.");
+            alert("Não foi possível carregar os pedidos. Verifique a conexão com o servidor.");
         } finally {
             setLoading(false);
         }
@@ -67,18 +67,51 @@ const App: React.FC = () => {
 
     const handleBackToList = () => {
         setSelectedRequestId(null);
-        setCurrentPage('all-requests');
+        // Navigate back to the most relevant list page
+        const canViewAll = [UserRole.MAINTENANCE, UserRole.MANAGER, UserRole.ADMIN].includes(user?.role || UserRole.REQUESTER);
+        setCurrentPage(canViewAll ? 'all-requests' : 'my-requests');
     };
     
-    const handleCreateRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
+    const handleEditRequest = (id: string) => {
+        setSelectedRequestId(id);
+        setCurrentPage('edit-request');
+    };
+    
+    const handleUpsertRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>, isEditing: boolean) => {
+        if (!user) return;
         try {
-            await api.createRequest(requestData);
-            await fetchRequests();
-            alert('Requisição criada com sucesso!');
-            setCurrentPage('my-requests');
-        } catch (error) {
-            console.error("Failed to create request:", error);
-            alert("Não foi possível criar a requisição. Tente novamente.");
+            if (isEditing) {
+                if (!selectedRequestId) return;
+                await api.updateRequest(selectedRequestId, requestData, user.id);
+                await fetchRequests();
+                alert('Pedido atualizado com sucesso!');
+                setCurrentPage('request-detail');
+            } else {
+                await api.createRequest(requestData);
+                await fetchRequests();
+                alert('Pedido criado com sucesso!');
+                setCurrentPage('my-requests');
+            }
+        } catch (error: any) {
+            console.error(`Failed to ${isEditing ? 'update' : 'create'} request:`, error);
+            alert(error.message || `Não foi possível ${isEditing ? 'atualizar' : 'criar'} o pedido. Tente novamente.`);
+        }
+    };
+
+    const handleDeleteRequest = async (requestId: string) => {
+        if (!user) return;
+        if (window.confirm('Tem certeza que deseja excluir este pedido permanentemente? Esta ação não pode ser desfeita.')) {
+            try {
+                await api.deleteRequest(requestId, user.id);
+                alert('Pedido excluído com sucesso!');
+                await fetchRequests();
+                if (selectedRequestId === requestId) {
+                    handleBackToList();
+                }
+            } catch (error: any) {
+                console.error("Failed to delete request:", error);
+                alert(error.message || "Não foi possível excluir o pedido.");
+            }
         }
     };
 
@@ -88,20 +121,45 @@ const App: React.FC = () => {
     };
 
     const renderPage = () => {
-        if (selectedRequestId && currentPage === 'request-detail' && user) {
-            return <RequestDetailPage requestId={selectedRequestId} user={user} onBack={handleBackToList} />;
+        if (selectedRequestId && user) {
+            const request = requests.find(r => r.id === selectedRequestId);
+            if (currentPage === 'request-detail') {
+                return <RequestDetailPage 
+                            requestId={selectedRequestId} 
+                            user={user} 
+                            onBack={handleBackToList}
+                            onDeleteRequest={handleDeleteRequest} 
+                            onEditRequest={handleEditRequest}
+                            onRequestUpdate={fetchRequests}
+                        />;
+            }
+            if (currentPage === 'edit-request' && request) {
+                return <CreateRequestPage 
+                            user={user} 
+                            onSubmit={handleUpsertRequest}
+                            requestToEdit={request}
+                            onCancel={() => setCurrentPage('request-detail')}
+                        />;
+            }
         }
 
         switch (currentPage) {
             case 'dashboard':
                 return <DashboardPage requests={requests} />;
             case 'all-requests':
-                return <RequestsListPage title="Todas Requisições" requests={requests} onSelectRequest={handleSelectRequest} />;
+                return <RequestsListPage title="Todos os Pedidos" requests={requests} onSelectRequest={handleSelectRequest} />;
             case 'my-requests':
                 const myRequests = requests.filter(r => r.requester.id === user?.id);
-                return <RequestsListPage title="Minhas Requisições" requests={myRequests} onSelectRequest={handleSelectRequest} />;
+                return <RequestsListPage 
+                            title="Meus Pedidos" 
+                            requests={myRequests} 
+                            onSelectRequest={handleSelectRequest} 
+                            user={user}
+                            onDeleteRequest={handleDeleteRequest}
+                            onEditRequest={handleEditRequest}
+                        />;
             case 'create-request':
-                if (user) return <CreateRequestPage user={user} onSubmit={handleCreateRequest} />;
+                if (user) return <CreateRequestPage user={user} onSubmit={handleUpsertRequest} onCancel={() => setCurrentPage('my-requests')} />;
                 return null;
             case 'user-management':
                  if (user?.role === UserRole.ADMIN) return <UserManagementPage user={user} />;

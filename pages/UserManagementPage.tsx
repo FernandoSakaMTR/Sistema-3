@@ -205,33 +205,22 @@ const UserManagementPage: React.FC<UserManagementPageProps> = ({ user: currentUs
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.role}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div className="flex items-center justify-end space-x-4">
+                                                            <button
+                                                                onClick={() => setEditingUser(user)}
+                                                                className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                                                title="Editar Usuário"
+                                                            >
+                                                                <PencilIcon className="h-5 w-5" />
+                                                            </button>
                                                             {currentUser.id !== user.id && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => setEditingUser(user)}
-                                                                        className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                                                        title="Editar Usuário"
-                                                                    >
-                                                                        <PencilIcon className="h-5 w-5" />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleDeleteUser(user.id)} 
-                                                                        className="text-red-600 hover:text-red-800 transition-colors"
-                                                                        title="Excluir Usuário"
-                                                                    >
-                                                                        <TrashIcon className="h-5 w-5" />
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                             {currentUser.id === user.id && (
-                                                                <button
-                                                                    onClick={() => setEditingUser(user)}
-                                                                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                                                    title="Editar Usuário"
+                                                                <button 
+                                                                    onClick={() => handleDeleteUser(user.id)} 
+                                                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                                                    title="Excluir Usuário"
                                                                 >
-                                                                    <PencilIcon className="h-5 w-5" />
+                                                                    <TrashIcon className="h-5 w-5" />
                                                                 </button>
-                                                             )}
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

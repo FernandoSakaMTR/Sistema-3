@@ -36,7 +36,7 @@ const NavItem: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesktopCollapsed, isMobileOpen, onMobileClose }) => {
   const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
   const isAdmin = user.role === UserRole.ADMIN;
-  const canCreate = [UserRole.REQUESTER, UserRole.ADMIN].includes(user.role);
+  const canCreate = true; // Permitir que todos os perfis criem pedidos
   const canViewAll = [UserRole.MAINTENANCE, UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
 
   const handleNavigation = (page: string) => {
@@ -74,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {canViewAll && (
             <NavItem
               icon={<ListIcon className="h-6 w-6" />}
-              label="Todas Requisições"
+              label="Todos os Pedidos"
               isActive={currentPage === 'all-requests'}
               onClick={() => handleNavigation('all-requests')}
               isCollapsed={isDesktopCollapsed}
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {user.role !== UserRole.MANAGER && (
             <NavItem
               icon={<ListIcon className="h-6 w-6" />}
-              label="Minhas Requisições"
+              label="Meus Pedidos"
               isActive={currentPage === 'my-requests'}
               onClick={() => handleNavigation('my-requests')}
               isCollapsed={isDesktopCollapsed}
@@ -92,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {canCreate && (
             <NavItem
               icon={<PlusIcon className="h-6 w-6" />}
-              label="Abrir Requisição"
+              label="Abrir Pedido"
               isActive={currentPage === 'create-request'}
               onClick={() => handleNavigation('create-request')}
               isCollapsed={isDesktopCollapsed}

@@ -14,11 +14,8 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
 
 // Low priority colors
 export const STATUS_COLORS: Record<RequestStatus, string> = {
-  [RequestStatus.OPEN]: 'bg-ticket-open text-white',
-  [RequestStatus.VIEWED]: 'bg-ticket-open text-white',
-  [RequestStatus.ACCEPTED]: 'bg-ticket-open text-white',
-  [RequestStatus.IN_PROGRESS]: 'bg-ticket-progress text-white',
-  [RequestStatus.PAUSED]: 'bg-ticket-paused text-white',
+  [RequestStatus.IN_PROGRESS]: 'text-brand-blue',
+  [RequestStatus.PAUSED]: 'text-gray-600',
   [RequestStatus.COMPLETED]: 'bg-ticket-completed text-white',
   [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
 };
@@ -26,8 +23,16 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
 // High priority colors
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
   [EquipmentStatus.OPERATIONAL]: 'bg-machine-ok text-white',
+  // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.PARTIAL]: 'bg-machine-partial text-black',
+  // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.INOPERATIVE]: 'bg-machine-down text-white'
+};
+
+export const EQUIPMENT_STATUS_TEXT_COLORS: Record<EquipmentStatus, string> = {
+  [EquipmentStatus.OPERATIONAL]: 'text-machine-ok',
+  [EquipmentStatus.PARTIAL]: 'text-machine-partial',
+  [EquipmentStatus.INOPERATIVE]: 'text-machine-down'
 };
 
 export let USERS: User[] = [
@@ -37,6 +42,11 @@ export let USERS: User[] = [
     { id: 4, name: 'Carlos Pereira', role: UserRole.MANAGER, sector: 'Gerência', password: 'senha123' },
     { id: 5, name: 'Daniela Martins', role: UserRole.REQUESTER, sector: 'Expedição', password: 'senha123' },
 ];
+
+// Mock File objects for attachments demonstration
+const file1 = new File(["Conteúdo simulado de uma imagem de vazamento"], "vazamento_ph02.jpg", { type: "image/jpeg" });
+const file2 = new File(["Conteúdo simulado de um PDF com diagrama elétrico"], "diagrama_eletrico_R05.pdf", { type: "application/pdf" });
+
 
 export let MOCK_REQUESTS: MaintenanceRequest[] = [
     {
@@ -53,13 +63,12 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       updatedAt: new Date(2023, 10, 1, 14, 0),
       assignedTo: USERS[2],
       startedAt: new Date(2023, 10, 1, 13, 45),
-      attachments: [],
+      attachments: [file1],
     },
     {
       id: 'MAN-002',
       title: 'Painel elétrico da Rosqueadeira R-05 desligando',
       description: 'O painel da Rosqueadeira R-05 está desarmando o disjuntor principal intermitentemente.',
-      status: RequestStatus.OPEN,
       equipmentStatus: EquipmentStatus.PARTIAL,
       requester: USERS[4],
       requesterSector: 'Expedição',
@@ -67,7 +76,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       maintenanceType: MaintenanceType.ELECTRICAL,
       createdAt: new Date(2023, 10, 2, 10, 0),
       updatedAt: new Date(2023, 10, 2, 10, 0),
-      attachments: [],
+      attachments: [file2],
     },
     {
       id: 'MAN-003',
@@ -117,7 +126,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       createdAt: new Date(2023, 10, 4, 11, 0),
       updatedAt: new Date(2023, 10, 4, 11, 30),
       assignedTo: USERS[2],
-      cancelReason: 'Requisição duplicada. Já existe a OS MAN-006 para o mesmo problema.',
+      cancelReason: 'Pedido duplicado. Já existe a OS MAN-006 para o mesmo problema.',
       attachments: [],
     },
 ];

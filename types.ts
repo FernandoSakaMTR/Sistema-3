@@ -1,5 +1,5 @@
 export enum UserRole {
-  REQUESTER = 'Requisitante',
+  REQUESTER = 'Solicitante',
   MAINTENANCE = 'Manutenção',
   MANAGER = 'Gestor',
   ADMIN = 'Admin'
@@ -14,9 +14,6 @@ export interface User {
 }
 
 export enum RequestStatus {
-  OPEN = 'Aberta',
-  VIEWED = 'Visualizada',
-  ACCEPTED = 'Aceita',
   IN_PROGRESS = 'Em atendimento',
   PAUSED = 'Atendimento Parado',
   COMPLETED = 'Concluída',
@@ -39,7 +36,7 @@ export interface MaintenanceRequest {
   id: string;
   title: string;
   description: string;
-  status: RequestStatus;
+  status?: RequestStatus;
   equipmentStatus: EquipmentStatus;
   requester: User;
   requesterSector: string;

@@ -1,14 +1,18 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User, MaintenanceRequest } from '../types';
 import { MaintenanceType, EquipmentStatus } from '../types';
+import { EQUIPMENT_STATUS_TEXT_COLORS } from '../constants';
 
 interface CreateRequestPageProps {
     user: User;
-    onSubmit: (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
+    onSubmit: (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>, isEditing: boolean) => void;
+    requestToEdit?: MaintenanceRequest;
+    onCancel: () => void;
 }
 
-const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit }) => {
+const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, requestToEdit, onCancel }) => {
+    const isEditing = !!requestToEdit;
+    
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PARTIAL);
@@ -16,6 +20,17 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
     const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
     const [attachments, setAttachments] = useState<File[]>([]);
     
+    useEffect(() => {
+        if (isEditing) {
+            setTitle(requestToEdit.title);
+            setDescription(requestToEdit.description);
+            setEquipmentStatus(requestToEdit.equipmentStatus);
+            setEquipment(requestToEdit.equipment.join(', '));
+            setMaintenanceType(requestToEdit.maintenanceType);
+            setAttachments(requestToEdit.attachments || []);
+        }
+    }, [isEditing, requestToEdit]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!title || !description || !equipment) {
@@ -33,7 +48,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
             maintenanceType,
             attachments,
         };
-        onSubmit(newRequestData);
+        onSubmit(newRequestData, isEditing);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,7 +59,9 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
     
     return (
         <div className="p-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-8">Abrir Nova Requisição</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-8">
+                {isEditing ? `Editando Pedido: ${requestToEdit.id}` : 'Abrir Novo Pedido'}
+            </h1>
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
                 <div>
                     <label htmlFor="title" className="block text-sm font-medium text-gray-700">Título Curto*</label>
@@ -52,8 +69,8 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
                 </div>
                 
                 <div>
-                    <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)* (separados por vírgula)</label>
-                    <input type="text" id="equipment" value={equipment} onChange={e => setEquipment(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)*</label>
+                    <input type="text" id="equipment" value={equipment} onChange={e => setEquipment(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ex: Prensa PH-02, Esteira-01" />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -65,8 +82,17 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
                     </div>
                     <div>
                         <label htmlFor="equipmentStatus" className="block text-sm font-medium text-gray-700">Status do Equipamento*</label>
-                        <select id="equipmentStatus" value={equipmentStatus} onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                            {Object.values(EquipmentStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                        <select 
+                            id="equipmentStatus" 
+                            value={equipmentStatus} 
+                            onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold transition-colors ${EQUIPMENT_STATUS_TEXT_COLORS[equipmentStatus]}`}
+                        >
+                            {Object.values(EquipmentStatus).map(s => (
+                                <option key={s} value={s} className="text-black font-normal">
+                                    {s}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -96,9 +122,12 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit })
                     </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-x-4">
+                    <button type="button" onClick={onCancel} className="py-2 px-6 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Cancelar
+                    </button>
                     <button type="submit" className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light">
-                        Enviar Requisição
+                        {isEditing ? 'Salvar Alterações' : 'Enviar Pedido'}
                     </button>
                 </div>
             </form>
