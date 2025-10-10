@@ -1,10 +1,11 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell, Label } from 'recharts';
-import type { MaintenanceRequest } from '../types';
-import { RequestStatus, EquipmentStatus } from '../types';
+import type { MaintenanceRequest, User } from '../types';
+import { RequestStatus, EquipmentStatus, UserRole } from '../types';
 
 interface DashboardPageProps {
   requests: MaintenanceRequest[];
+  user: User;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; color: string }> = ({ title, value, color }) => (
@@ -14,7 +15,9 @@ const StatCard: React.FC<{ title: string; value: string | number; color: string 
     </div>
 );
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ requests, user }) => {
+  const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
+
   // Dados para o gráfico de status de pedidos
   const newCount = requests.filter(r => !r.status).length;
   const inProgressCount = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
@@ -37,51 +40,38 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
     { name: 'Inoperante', value: inoperativeCount, fill: '#E74C3C' },
   ];
 
-  // --- LÓGICA REFEITA PARA O GRÁFICO DE TEMPO DE ESPERA ---
+  // --- LÓGICA PARA TEMPO MÉDIO DE REPARO ---
+  const completedRequestsWithTime = requests.filter(
+    r => r.status === RequestStatus.COMPLETED && r.startedAt && r.completedAt
+  );
 
-  // 1. Determina o ano mais recente com dados para exibir no gráfico.
-  const mostRecentYearWithData = requests
-    .filter(r => r.startedAt)
-    .reduce((maxYear, r) => {
-        const year = r.startedAt!.getFullYear();
-        return year > maxYear ? year : maxYear;
-    }, 0);
+  const totalRepairTime = completedRequestsWithTime.reduce((acc, r) => {
+    const duration = r.completedAt!.getTime() - r.startedAt!.getTime();
+    return acc + (duration > 0 ? duration : 0);
+  }, 0);
   
-  // Usa o ano atual como padrão se não houver dados.
-  const displayYear = mostRecentYearWithData || new Date().getFullYear();
+  const averageRepairTimeMs = completedRequestsWithTime.length > 0 
+    ? totalRepairTime / completedRequestsWithTime.length 
+    : 0;
+  
+  const formatAverageDuration = (ms: number): string => {
+    if (ms <= 0) return '0 min';
+    
+    const totalSeconds = ms / 1000;
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor(((totalSeconds % 86400) % 3600) / 60);
 
-  // 2. Inicializa um array para armazenar as estatísticas de cada um dos 12 meses.
-  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  const monthlyStats: { totalHours: number; count: number }[] = Array(12).fill(null).map(() => ({
-      totalHours: 0,
-      count: 0,
-  }));
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}min`);
 
-  // 3. Processa os pedidos para preencher os dados mensais.
-  requests
-    // Filtra apenas pedidos do ano selecionado que já foram iniciados.
-    .filter(r => r.startedAt && r.createdAt && r.startedAt.getFullYear() === displayYear)
-    .forEach(r => {
-        const startedAt = r.startedAt!;
-        const createdAt = r.createdAt!;
-        const monthIndex = startedAt.getMonth();
+    return parts.join(' ');
+  };
 
-        // Calcula o tempo de espera em horas.
-        const waitingTimeMillis = startedAt.getTime() - createdAt.getTime();
-        const waitingTimeHours = Math.max(0, waitingTimeMillis / (1000 * 60 * 60)); // Garante que não seja negativo
+  const formattedAverageRepairTime = formatAverageDuration(averageRepairTimeMs);
 
-        monthlyStats[monthIndex].totalHours += waitingTimeHours;
-        monthlyStats[monthIndex].count += 1;
-    });
-
-  // 4. Calcula a média para cada mês e formata os dados para o gráfico.
-  const averageWaitingTimeData = monthlyStats.map((data, index) => {
-      const average = data.count > 0 ? data.totalHours / data.count : 0;
-      return {
-          name: `${monthNames[index]}/${String(displayYear).slice(2)}`,
-          "Tempo Médio (h)": parseFloat(average.toFixed(2)),
-      };
-  });
 
   return (
     <div className="p-8">
@@ -115,10 +105,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard title="Novos Pedidos" value={newCount} color="text-gray-500" />
         <StatCard title="Em Andamento" value={inProgressCount} color="text-ticket-progress" />
         <StatCard title="Concluídas" value={completedCount} color="text-ticket-completed" />
+        {isManagerOrAdmin && (
+          <StatCard title="Tempo Médio de Reparo" value={formattedAverageRepairTime} color="text-gray-900" />
+        )}
       </div>
 
       {/* Gráfico de Pedidos por Status */}
@@ -132,25 +125,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Bar dataKey="count" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-       {/* Gráfico de Tempo Médio de Espera (Refeito) */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold text-gray-700 mb-4">Tempo Médio de Espera por Mês ({displayYear})</h2>
-        <div style={{ width: '100%', height: 400 }}>
-          <ResponsiveContainer>
-            <BarChart data={averageWaitingTimeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" dy={10} />
-              <YAxis unit="h" domain={[0, 100]}>
-                 <Label value="Horas" angle={-90} position="insideLeft" style={{ textAnchor: 'middle' }} />
-              </YAxis>
-              <Tooltip formatter={(value) => `${value} h`} />
-              <Legend />
-              <Bar dataKey="Tempo Médio (h)" fill="#F1C40F" />
             </BarChart>
           </ResponsiveContainer>
         </div>

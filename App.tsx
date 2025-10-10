@@ -21,24 +21,38 @@ const App: React.FC = () => {
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    const fetchRequests = useCallback(async () => {
-        setLoading(true);
+    const fetchRequests = useCallback(async (isBackgroundRefresh = false) => {
+        if (!isBackgroundRefresh) setLoading(true);
         try {
             const data = await api.getRequests();
             setRequests(data);
         } catch (error) {
             console.error("Failed to fetch requests:", error);
-            alert("Não foi possível carregar os pedidos. Verifique a conexão com o servidor.");
+            if (!isBackgroundRefresh) {
+              alert("Não foi possível carregar os pedidos. Verifique a conexão com o servidor.");
+            }
         } finally {
-            setLoading(false);
+            if (!isBackgroundRefresh) setLoading(false);
         }
     }, []);
 
     useEffect(() => {
         if (user) {
-            fetchRequests();
+            fetchRequests(false); // Carga inicial
             const defaultPage = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) ? 'dashboard' : 'my-requests';
             setCurrentPage(defaultPage);
+        }
+    }, [user]);
+    
+    // Efeito para polling de dados (atualização em tempo real)
+    useEffect(() => {
+        if (user) {
+            const intervalId = setInterval(() => {
+                fetchRequests(true); // Atualização em segundo plano
+            }, 15000); // Atualiza a cada 15 segundos
+
+            // Limpa o intervalo quando o usuário desloga ou o componente é desmontado
+            return () => clearInterval(intervalId);
         }
     }, [user, fetchRequests]);
 
@@ -145,7 +159,8 @@ const App: React.FC = () => {
 
         switch (currentPage) {
             case 'dashboard':
-                return <DashboardPage requests={requests} />;
+                if (user) return <DashboardPage requests={requests} user={user} />;
+                return null;
             case 'all-requests':
                 return <RequestsListPage title="Todos os Pedidos" requests={requests} onSelectRequest={handleSelectRequest} />;
             case 'my-requests':
@@ -169,7 +184,8 @@ const App: React.FC = () => {
                  if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
             default:
-                return <DashboardPage requests={requests} />;
+                if (user) return <DashboardPage requests={requests} user={user} />;
+                return null;
         }
     };
 

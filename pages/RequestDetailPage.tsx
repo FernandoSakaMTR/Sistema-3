@@ -191,7 +191,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
     const waitingTime = request.startedAt ? formatDuration(request.createdAt, request.startedAt) : undefined;
-    
+    const totalRepairTime = (request.status === RequestStatus.COMPLETED && request.startedAt && request.completedAt) 
+        ? formatDuration(request.startedAt, request.completedAt) 
+        : undefined;
 
     return (
         <div className="p-8">
@@ -308,7 +310,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                                 </div>
                                 {isManagerOrAdmin && waitingTime && (
                                     <div className="pt-2">
-                                        <DetailItem label="Tempo de Espera" value={waitingTime} />
+                                        <DetailItem label="Aguardo no Atendimento" value={waitingTime} />
+                                    </div>
+                                )}
+                                {isManagerOrAdmin && totalRepairTime && (
+                                    <div className="pt-2">
+                                        <DetailItem label="Tempo Total de Reparo" value={totalRepairTime} />
                                     </div>
                                 )}
                                 <div className="pt-2">

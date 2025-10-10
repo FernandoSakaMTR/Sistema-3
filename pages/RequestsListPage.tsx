@@ -30,6 +30,7 @@ const RequestCard: React.FC<{
     
     const isCompleted = request.status === RequestStatus.COMPLETED;
     const isCanceled = request.status === RequestStatus.CANCELED;
+    const isFinalized = isCompleted || isCanceled;
     const isNew = !request.status;
 
     const getCardBgColor = () => {
@@ -49,7 +50,7 @@ const RequestCard: React.FC<{
                     <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
                 </div>
                 <div className="flex items-center gap-x-2">
-                    {!isCanceled && (
+                    {!isFinalized && (
                         <PriorityBadge status={request.equipmentStatus} />
                     )}
                     {!isCompleted && (
