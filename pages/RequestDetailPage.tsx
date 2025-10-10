@@ -27,6 +27,27 @@ const formatDate = (date: Date | undefined | null): string | undefined => {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
 };
 
+const formatDuration = (start: Date, end: Date): string => {
+    let diff = end.getTime() - start.getTime();
+    if (diff < 0) diff = 0;
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    diff -= days * (1000 * 60 * 60 * 24);
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    diff -= hours * (1000 * 60 * 60);
+
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    const parts = [];
+    if (days > 0) parts.push(`${days} dia${days > 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hora${hours > 1 ? 's' : ''}`);
+    if (minutes > 0) parts.push(`${minutes} minuto${minutes > 1 ? 's' : ''}`);
+    
+    return parts.length > 0 ? parts.join(', ') : 'Menos de 1 minuto';
+};
+
+
 const DetailItem: React.FC<{ label: string; value?: string | string[] | null, children?: React.ReactNode }> = ({ label, value, children }) => (
     <div>
         <p className="text-sm font-medium text-gray-500">{label}</p>
@@ -83,7 +104,6 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
 
     const [isReasonModalOpen, setIsReasonModalOpen] = useState(false);
-    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [currentAction, setCurrentAction] = useState<RequestStatus | null>(null);
     const [reason, setReason] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,8 +134,6 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     }, [request]);
 
     const handleActionSelect = (action: RequestStatus) => {
-        setIsActionModalOpen(false); // Close the action selection modal
-        
         const config = MODAL_CONFIG[action];
         if (config.title) {
             setCurrentAction(action);
@@ -170,6 +188,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const modalConfig = currentAction ? MODAL_CONFIG[currentAction] : null;
     const isConfirmDisabled = isSubmitting || (modalConfig?.isReasonRequired && !reason.trim());
+
+    const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
+    const waitingTime = request.startedAt ? formatDuration(request.createdAt, request.startedAt) : undefined;
     
 
     return (
@@ -203,36 +224,13 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     </button>
                 </div>
             </ActionModal>
-
-            <ActionModal
-                isOpen={isActionModalOpen}
-                onClose={() => setIsActionModalOpen(false)}
-                title="Atualizar Status do Pedido"
-            >
-                <div className="flex flex-wrap justify-center gap-4 pt-4">
-                    {request.status === undefined && (
-                        <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors">
-                            Iniciar Atendimento
-                        </button>
-                    )}
-                    {request.status === RequestStatus.IN_PROGRESS && (
-                         <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors">
-                            Concluir
-                        </button>
-                    )}
-                    {(request.status === undefined || request.status === RequestStatus.IN_PROGRESS) && (
-                         <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors">
-                            Cancelar
-                        </button>
-                    )}
-                </div>
-            </ActionModal>
             
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                <div>
+                 <div>
                     <button onClick={onBack} className="text-brand-blue hover:underline mb-2">&larr; Voltar para a lista</button>
-                    <h1 className={`text-3xl font-bold text-gray-800 ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>{request.title}</h1>
-                    <p className="text-gray-500">{request.id}</p>
+                    <h1 className="text-3xl font-bold text-gray-800">
+                       Detalhes do Pedido <span className="text-gray-500 font-medium">{request.id}</span>
+                    </h1>
                 </div>
                 <div>
                     {isCompleted ? (
@@ -249,8 +247,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                 </div>
             </div>
             
-            <div className="bg-white p-8 rounded-lg shadow-md">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 border-b pb-6 mb-8">
+            <div className="bg-white p-8 rounded-lg shadow-md space-y-8">
+                {/* Top Details Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-6">
                     <DetailItem label="Solicitante" value={request.requester.name} />
                     <DetailItem label="Setor" value={request.requesterSector} />
                     <DetailItem label="Equipamento(s)" value={request.equipment} />
@@ -258,68 +257,92 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
-                    {/* Description Section */}
-                    <div className={`${isFinalized ? 'lg:col-span-3' : 'lg:col-span-5'} space-y-6`}>
-                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Descrição do Problema e Anexos</h2>
-                        <DetailItem label="O que está ocorrendo?">
-                            <p className="text-xl text-gray-900 whitespace-pre-wrap leading-relaxed">{request.description}</p>
-                        </DetailItem>
-                        <DetailItem label="Anexos">
-                            {request.attachments && request.attachments.length > 0 ? (
-                                <ul className="space-y-2 border border-gray-200 rounded-md p-3">
-                                    {request.attachments.map((file, index) => (
-                                        <li key={index}>
-                                            <a 
-                                                href={attachmentUrls[index]} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
-                                            >
-                                                <PaperclipIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                                                <span className="truncate">{file.name}</span>
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-gray-500 text-sm">Nenhum anexo foi adicionado.</p>
+                {/* Description Section */}
+                <div className="border-t pt-8">
+                    <h2 className="text-sm font-medium text-gray-500 mb-2">O que está ocorrendo?</h2>
+                    <p className={`text-xl text-gray-800 whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>
+                        {request.description}
+                    </p>
+                </div>
+
+                {/* Attachments and Maintenance Section */}
+                <div className="border-t pt-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+                        {/* Attachments */}
+                        <div className={`${isFinalized ? 'lg:col-span-3' : 'lg:col-span-5'} space-y-6`}>
+                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Anexos</h2>
+                            <DetailItem label="">
+                                {request.attachments && request.attachments.length > 0 ? (
+                                    <ul className="space-y-2 border border-gray-200 rounded-md p-3">
+                                        {request.attachments.map((file, index) => (
+                                            <li key={index}>
+                                                <a 
+                                                    href={attachmentUrls[index]} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                >
+                                                    <PaperclipIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                    <span className="truncate">{file.name}</span>
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-gray-500 text-sm">Nenhum anexo foi adicionado.</p>
+                                )}
+                            </DetailItem>
+                            {isCanceled && request.cancelReason && (
+                               <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
                             )}
-                        </DetailItem>
-                        {isCanceled && request.cancelReason && (
-                           <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
+                        </div>
+
+                        {/* Maintenance Details (Conditional) */}
+                        {isFinalized && (
+                            <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
+                                <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <DetailItem label="Responsável" value={request.assignedTo?.name} />
+                                    <DetailItem label="Início" value={formatDate(request.startedAt)} />
+                                    <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
+                                </div>
+                                {isManagerOrAdmin && waitingTime && (
+                                    <div className="pt-2">
+                                        <DetailItem label="Tempo de Espera" value={waitingTime} />
+                                    </div>
+                                )}
+                                <div className="pt-2">
+                                    <DetailItem label="Notas da Manutenção">
+                                        <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
+                                    </DetailItem>
+                                </div>
+                            </div>
                         )}
                     </div>
-
-                    {/* Maintenance Section */}
-                    {isFinalized && (
-                        <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
-                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <DetailItem label="Responsável" value={request.assignedTo?.name} />
-                                <DetailItem label="Início" value={formatDate(request.startedAt)} />
-                                <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
-                            </div>
-                            <div className="pt-2">
-                                <DetailItem label="Notas da Manutenção">
-                                    <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
-                                </DetailItem>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {canPerformAnyAction && (
-                    <div className="border-t mt-8 pt-6">
+                    <div className="border-t pt-8">
                         <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações Disponíveis</h3>
                         <div className="flex flex-wrap gap-4">
                             {canTakeAction && (
-                                <button
-                                    onClick={() => setIsActionModalOpen(true)}
-                                    className="bg-brand-blue text-white px-6 py-2 rounded-md hover:bg-brand-blue-dark transition-colors shadow-md"
-                                >
-                                    Atualizar Status
-                                </button>
+                                <>
+                                    {request.status === undefined && (
+                                        <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors shadow-md">
+                                            Iniciar Atendimento
+                                        </button>
+                                    )}
+                                    {request.status === RequestStatus.IN_PROGRESS && (
+                                        <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
+                                            Concluir
+                                        </button>
+                                    )}
+                                    {(request.status === undefined || request.status === RequestStatus.IN_PROGRESS) && (
+                                        <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
+                                            Cancelar
+                                        </button>
+                                    )}
+                                </>
                             )}
                             {canEditRequest && (
                                 <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800">Editar Pedido</button>

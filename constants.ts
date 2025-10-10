@@ -19,13 +19,20 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
 };
 
-// High priority colors
+// High priority colors for badges
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
   [EquipmentStatus.OPERATIONAL]: 'bg-machine-ok text-white',
   // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.PARTIAL]: 'bg-machine-partial text-black',
   // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.INOPERATIVE]: 'bg-machine-down text-white'
+};
+
+// Lighter high priority colors for form inputs/backgrounds
+export const EQUIPMENT_STATUS_BG_COLORS: Record<EquipmentStatus, string> = {
+  [EquipmentStatus.OPERATIONAL]: 'bg-machine-ok-light',
+  [EquipmentStatus.PARTIAL]: 'bg-machine-partial-light',
+  [EquipmentStatus.INOPERATIVE]: 'bg-machine-down-light'
 };
 
 export const EQUIPMENT_STATUS_TEXT_COLORS: Record<EquipmentStatus, string> = {
@@ -50,7 +57,6 @@ const file2 = new File(["Conteúdo simulado de um PDF com diagrama elétrico"], 
 export let MOCK_REQUESTS: MaintenanceRequest[] = [
     {
       id: 'MAN-001',
-      title: 'Prensa Hidráulica com vazamento',
       description: 'A prensa PH-02 está com um vazamento de óleo na base do cilindro principal. Necessita de verificação urgente pois está parando a produção.',
       status: RequestStatus.IN_PROGRESS,
       equipmentStatus: EquipmentStatus.INOPERATIVE,
@@ -66,7 +72,6 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
     },
     {
       id: 'MAN-002',
-      title: 'Painel elétrico da Rosqueadeira R-05 desligando',
       description: 'O painel da Rosqueadeira R-05 está desarmando o disjuntor principal intermitentemente.',
       equipmentStatus: EquipmentStatus.PARTIAL,
       requester: USERS[4],
@@ -79,7 +84,6 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
     },
     {
       id: 'MAN-003',
-      title: 'Computador da expedição não liga',
       description: 'O computador da bancada de expedição não está ligando. Já foi testado em outra tomada.',
       status: RequestStatus.COMPLETED,
       equipmentStatus: EquipmentStatus.OPERATIONAL,
@@ -97,7 +101,6 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
     },
     {
       id: 'MAN-005',
-      title: 'Lâmpada queimada no setor de Prensas',
       description: 'Uma das lâmpadas do galpão das prensas está queimada.',
       status: RequestStatus.CANCELED,
       equipmentStatus: EquipmentStatus.OPERATIONAL,

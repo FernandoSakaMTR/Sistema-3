@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell, Label } from 'recharts';
 import type { MaintenanceRequest } from '../types';
 import { RequestStatus, EquipmentStatus } from '../types';
 
@@ -37,6 +37,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
     { name: 'Inoperante', value: inoperativeCount, fill: '#E74C3C' },
   ];
 
+  // --- LÓGICA REFEITA PARA O GRÁFICO DE TEMPO DE ESPERA ---
+
+  // 1. Determina o ano mais recente com dados para exibir no gráfico.
+  const mostRecentYearWithData = requests
+    .filter(r => r.startedAt)
+    .reduce((maxYear, r) => {
+        const year = r.startedAt!.getFullYear();
+        return year > maxYear ? year : maxYear;
+    }, 0);
+  
+  // Usa o ano atual como padrão se não houver dados.
+  const displayYear = mostRecentYearWithData || new Date().getFullYear();
+
+  // 2. Inicializa um array para armazenar as estatísticas de cada um dos 12 meses.
+  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const monthlyStats: { totalHours: number; count: number }[] = Array(12).fill(null).map(() => ({
+      totalHours: 0,
+      count: 0,
+  }));
+
+  // 3. Processa os pedidos para preencher os dados mensais.
+  requests
+    // Filtra apenas pedidos do ano selecionado que já foram iniciados.
+    .filter(r => r.startedAt && r.createdAt && r.startedAt.getFullYear() === displayYear)
+    .forEach(r => {
+        const startedAt = r.startedAt!;
+        const createdAt = r.createdAt!;
+        const monthIndex = startedAt.getMonth();
+
+        // Calcula o tempo de espera em horas.
+        const waitingTimeMillis = startedAt.getTime() - createdAt.getTime();
+        const waitingTimeHours = Math.max(0, waitingTimeMillis / (1000 * 60 * 60)); // Garante que não seja negativo
+
+        monthlyStats[monthIndex].totalHours += waitingTimeHours;
+        monthlyStats[monthIndex].count += 1;
+    });
+
+  // 4. Calcula a média para cada mês e formata os dados para o gráfico.
+  const averageWaitingTimeData = monthlyStats.map((data, index) => {
+      const average = data.count > 0 ? data.totalHours / data.count : 0;
+      return {
+          name: `${monthNames[index]}/${String(displayYear).slice(2)}`,
+          "Tempo Médio (h)": parseFloat(average.toFixed(2)),
+      };
+  });
 
   return (
     <div className="p-8">
@@ -77,7 +122,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
       </div>
 
       {/* Gráfico de Pedidos por Status */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <h2 className="text-xl font-semibold text-gray-700 mb-4">Status dos Pedidos</h2>
         <div style={{ width: '100%', height: 400 }}>
           <ResponsiveContainer>
@@ -87,6 +132,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Bar dataKey="count" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+       {/* Gráfico de Tempo Médio de Espera (Refeito) */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold text-gray-700 mb-4">Tempo Médio de Espera por Mês ({displayYear})</h2>
+        <div style={{ width: '100%', height: 400 }}>
+          <ResponsiveContainer>
+            <BarChart data={averageWaitingTimeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" dy={10} />
+              <YAxis unit="h" domain={[0, 100]}>
+                 <Label value="Horas" angle={-90} position="insideLeft" style={{ textAnchor: 'middle' }} />
+              </YAxis>
+              <Tooltip formatter={(value) => `${value} h`} />
+              <Legend />
+              <Bar dataKey="Tempo Médio (h)" fill="#F1C40F" />
             </BarChart>
           </ResponsiveContainer>
         </div>

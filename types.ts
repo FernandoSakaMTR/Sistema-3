@@ -33,7 +33,6 @@ export enum EquipmentStatus {
 
 export interface MaintenanceRequest {
   id: string;
-  title: string;
   description: string;
   status?: RequestStatus;
   equipmentStatus: EquipmentStatus;

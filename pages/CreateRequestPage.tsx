@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { User, MaintenanceRequest } from '../types';
 import { MaintenanceType, EquipmentStatus } from '../types';
-import { EQUIPMENT_STATUS_TEXT_COLORS } from '../constants';
+import { EQUIPMENT_STATUS_BG_COLORS } from '../constants';
 
 interface CreateRequestPageProps {
     user: User;
@@ -13,16 +13,15 @@ interface CreateRequestPageProps {
 const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, requestToEdit, onCancel }) => {
     const isEditing = !!requestToEdit;
     
-    const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PARTIAL);
     const [equipment, setEquipment] = useState('');
     const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [errors, setErrors] = useState<{ equipment?: string, description?: string }>({});
     
     useEffect(() => {
         if (isEditing) {
-            setTitle(requestToEdit.title);
             setDescription(requestToEdit.description);
             setEquipmentStatus(requestToEdit.equipmentStatus);
             setEquipment(requestToEdit.equipment.join(', '));
@@ -31,15 +30,26 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         }
     }, [isEditing, requestToEdit]);
 
+    const validateForm = () => {
+        const newErrors: { equipment?: string, description?: string } = {};
+        if (!equipment.trim()) {
+            newErrors.equipment = 'O campo Equipamento é obrigatório.';
+        }
+        if (!description.trim()) {
+            newErrors.description = 'O campo de descrição é obrigatório.';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !description || !equipment) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
+        if (!validateForm()) {
             return;
         }
         
         const newRequestData = {
-            title,
             description,
             equipmentStatus,
             requester: user,
@@ -64,13 +74,16 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             </h1>
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
                 <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">Título Curto*</label>
-                    <input type="text" id="title" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                </div>
-                
-                <div>
                     <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)*</label>
-                    <input type="text" id="equipment" value={equipment} onChange={e => setEquipment(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ex: Prensa PH-02, Esteira-01" />
+                    <input 
+                        type="text" 
+                        id="equipment" 
+                        value={equipment} 
+                        onChange={e => setEquipment(e.target.value)} 
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${errors.equipment ? 'border-red-500' : ''}`} 
+                        placeholder="Ex: Prensa PH-02, Esteira-01" 
+                    />
+                    {errors.equipment && <p className="mt-1 text-sm text-red-600">{errors.equipment}</p>}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -86,10 +99,10 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                             id="equipmentStatus" 
                             value={equipmentStatus} 
                             onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
-                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold transition-colors ${EQUIPMENT_STATUS_TEXT_COLORS[equipmentStatus]}`}
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold transition-colors ${EQUIPMENT_STATUS_BG_COLORS[equipmentStatus]} text-black`}
                         >
                             {Object.values(EquipmentStatus).map(s => (
-                                <option key={s} value={s} className="text-black font-normal">
+                                <option key={s} value={s} className="text-black font-normal bg-white">
                                     {s}
                                 </option>
                             ))}
@@ -99,7 +112,14 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                 
                 <div>
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">O que está ocorrendo?*</label>
-                    <textarea id="description" value={description} onChange={e => setDescription(e.target.value)} rows={6} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"></textarea>
+                    <textarea 
+                        id="description" 
+                        value={description} 
+                        onChange={e => setDescription(e.target.value)} 
+                        rows={6} 
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3 ${errors.description ? 'border-red-500' : ''}`}
+                    ></textarea>
+                    {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
                 </div>
 
                 <div>

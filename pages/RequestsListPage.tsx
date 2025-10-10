@@ -83,8 +83,8 @@ const RequestCard: React.FC<{
                 </div>
             </div>
             <div className="mt-2">
-                <h3 className={`text-lg font-bold text-gray-800 break-words ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>{request.title}</h3>
-                <p className="text-sm text-gray-500 mt-1 break-words">Solicitante: {request.requester.name}</p>
+                <h3 className={`text-lg font-bold text-gray-800 break-words whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>{request.description}</h3>
+                <p className="text-sm text-gray-500 mt-3 break-words">Solicitante: {request.requester.name}</p>
             </div>
             <div className="border-t my-4"></div>
             <div className="flex justify-between items-center text-sm text-gray-600">
