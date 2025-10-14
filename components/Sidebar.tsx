@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { DashboardIcon, ListIcon, PlusIcon, UserIcon, XIcon } from './icons';
+import { DashboardIcon, ListIcon, PlusIcon, UserIcon, XIcon, ShieldCheckIcon } from './icons';
 import type { User } from '../types';
 import { UserRole } from '../types';
 
@@ -68,6 +69,15 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
               label="Dashboard"
               isActive={currentPage === 'dashboard'}
               onClick={() => handleNavigation('dashboard')}
+              isCollapsed={isDesktopCollapsed}
+            />
+          )}
+          {isManagerOrAdmin && (
+            <NavItem
+              icon={<ShieldCheckIcon className="h-6 w-6" />}
+              label="Preventivas"
+              isActive={currentPage === 'preventive-requests'}
+              onClick={() => handleNavigation('preventive-requests')}
               isCollapsed={isDesktopCollapsed}
             />
           )}

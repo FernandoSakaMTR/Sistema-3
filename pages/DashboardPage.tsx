@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { MaintenanceRequest } from '../types';
 import { RequestStatus, EquipmentStatus } from '../types';
@@ -11,6 +12,17 @@ interface EquipmentMetric {
   failureCount: number;
   mttr: number; // in hours
   mtbf: number; // in hours
+  preventiveAlert?: string;
+}
+
+// Lógica de Negócio para Manutenção Preventiva
+const PREVENTIVE_MAINTENANCE_CYCLE_HOURS = 300;
+const PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE = 0.85;
+const PREVENTIVE_THRESHOLD_MS = PREVENTIVE_MAINTENANCE_CYCLE_HOURS * PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE * 60 * 60 * 1000;
+
+interface DashboardPageProps {
+    requests: MaintenanceRequest[];
+    onTriggerPreventiveRequest: (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'requester' | 'status' | 'isPreventive' >) => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
@@ -53,7 +65,7 @@ const SortableTableHeader: React.FC<{
 };
 
 
-const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ requests, onTriggerPreventiveRequest }) => {
     const [equipmentMetrics, setEquipmentMetrics] = useState<EquipmentMetric[]>([]);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -69,8 +81,6 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                 return;
             }
             
-            // Apenas exibe o loader na primeira carga. As atualizações subsequentes (polling)
-            // ocorrerão em segundo plano sem piscar a tela.
             if (!initialLoadComplete) {
                 setLoadingMetrics(true);
             }
@@ -79,7 +89,6 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                 const operationalData = await getOperationalData();
                 const requestsByEquipment: Record<string, MaintenanceRequest[]> = {};
 
-                // Group requests by equipment (handles multiple equipment per request)
                 for (const req of requests) {
                     for (const eq of req.equipment) {
                         if (!requestsByEquipment[eq]) {
@@ -96,16 +105,44 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                     const failureCount = eqRequests.length;
                     const sector = eqRequests[0]?.requesterSector || 'N/D';
 
-                    // Calculate MTTR for this equipment
+                    // Calculate MTTR
                     const completedWithTimes = eqRequests.filter(r => r.status === RequestStatus.COMPLETED && r.startedAt && r.completedAt && r.completedAt.getTime() > r.startedAt.getTime());
                     const totalRepairTimeMs = completedWithTimes.reduce((acc, r) => acc + (r.completedAt!.getTime() - r.startedAt!.getTime()), 0);
                     const mttrMs = completedWithTimes.length > 0 ? totalRepairTimeMs / completedWithTimes.length : 0;
                     const mttrHours = mttrMs / (1000 * 60 * 60);
 
-                    // Calculate MTBF for this equipment
+                    // Calculate MTBF
                     const uptimeMs = operationalData[equipmentName]?.totalOperationalTimeMs || 0;
-                    const mtbfMs = failureCount > 0 ? uptimeMs / failureCount : uptimeMs; // Avoid division by zero
+                    const mtbfMs = failureCount > 0 ? uptimeMs / failureCount : uptimeMs;
                     const mtbfHours = mtbfMs / (1000 * 60 * 60);
+                    
+                    // Lógica de Manutenção Preventiva
+                    let preventiveAlert: string | undefined = undefined;
+                    const lastCompletedRequest = eqRequests
+                        .filter(r => r.status === RequestStatus.COMPLETED && r.completedAt)
+                        .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime())[0];
+                    
+                    if (lastCompletedRequest && uptimeMs >= PREVENTIVE_THRESHOLD_MS) {
+                        preventiveAlert = `Preventiva Recomendada (${lastCompletedRequest.maintenanceType})`;
+
+                        const isPending = requests.some(r =>
+                            r.equipment.includes(equipmentName) &&
+                            r.isPreventive &&
+                            (r.status === RequestStatus.PENDING_APPROVAL || r.status === undefined)
+                        );
+
+                        if (!isPending) {
+                            onTriggerPreventiveRequest({
+                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${lastCompletedRequest.maintenanceType}.`,
+                                equipmentStatus: EquipmentStatus.OPERATIONAL,
+                                requesterSector: sector,
+                                equipment: [equipmentName],
+                                maintenanceType: lastCompletedRequest.maintenanceType,
+                                failureTime: new Date(),
+                                attachments: [],
+                            });
+                        }
+                    }
 
                     metrics.push({
                         equipmentName,
@@ -113,12 +150,13 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                         failureCount,
                         mttr: parseFloat(mttrHours.toFixed(2)),
                         mtbf: parseFloat(mtbfHours.toFixed(2)),
+                        preventiveAlert,
                     });
                 }
                 setEquipmentMetrics(metrics);
             } catch (error) {
                 console.error("Failed to calculate equipment metrics:", error);
-                setEquipmentMetrics([]); // Clear metrics on error to avoid stale data
+                setEquipmentMetrics([]);
             } finally {
                 setLoadingMetrics(false);
                 setInitialLoadComplete(true);
@@ -126,7 +164,7 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
         };
 
         calculateMetrics();
-    }, [requests]);
+    }, [requests, onTriggerPreventiveRequest]);
 
     const sortedAndFilteredMetrics = useMemo(() => {
         let filtered = [...equipmentMetrics];
@@ -148,7 +186,7 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
         return filtered;
     }, [equipmentMetrics, selectedSector, sortConfig]);
 
-    const newRequests = requests.filter(r => !r.status).length;
+    const newRequests = requests.filter(r => !r.status && !r.isPreventive).length;
     const inProgressRequests = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
     const machinesDown = requests.filter(r => r.equipmentStatus === EquipmentStatus.INOPERATIVE && r.status !== RequestStatus.COMPLETED && r.status !== RequestStatus.CANCELED).length;
     const completedThisMonth = requests.filter(r => {
@@ -200,6 +238,7 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                                     <SortableTableHeader label="Falhas" sortKey="failureCount" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
                                     <SortableTableHeader label="MTTR (h)" sortKey="mttr" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
                                     <SortableTableHeader label="MTBF (h)" sortKey="mtbf" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações Preventivas</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -210,10 +249,20 @@ const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{metric.failureCount}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{metric.mttr}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-center text-brand-blue">{metric.mtbf}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {metric.preventiveAlert ? (
+                                                <span className="inline-flex items-center gap-x-1.5 px-2 py-1 text-xs font-medium rounded-md bg-yellow-100 text-yellow-800">
+                                                    <WrenchIcon className="h-4 w-4" />
+                                                    {metric.preventiveAlert}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400">—</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500">Nenhum dado encontrado para os filtros selecionados.</td>
+                                        <td colSpan={6} className="px-6 py-4 text-center text-gray-500">Nenhum dado encontrado para os filtros selecionados.</td>
                                     </tr>
                                 )}
                             </tbody>

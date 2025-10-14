@@ -103,7 +103,7 @@ export const getRequestById = async (id: string): Promise<MaintenanceRequest> =>
     return deepCopyRequest(request);
 };
 
-export const createRequest = async (newRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<MaintenanceRequest> => {
+export const createRequest = async (newRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<MaintenanceRequest> => {
     await delay(800);
     const newRequest: MaintenanceRequest = {
         ...newRequestData,
@@ -128,12 +128,16 @@ export const updateRequest = async (
 
   const originalRequest = requests[requestIndex];
 
-  if (originalRequest.requester.id !== userId) {
-    throw new Error('Você não tem permissão para editar este pedido.');
+  // Permite edição para pedidos novos (sem status) OU preventivos pendentes de aprovação
+  if (originalRequest.status && originalRequest.status !== RequestStatus.PENDING_APPROVAL) {
+      throw new Error('Apenas pedidos novos ou preventivos pendentes de aprovação podem ser editados.');
   }
-  if (originalRequest.status) {
-    throw new Error('Apenas pedidos novos (sem status) podem ser editados.');
+
+  // Se for preventivo, um gestor (que não é o requester "Sistema") pode editar.
+  if (!originalRequest.isPreventive && originalRequest.requester.id !== userId) {
+      throw new Error('Você não tem permissão para editar este pedido.');
   }
+
 
   const updatedRequest: MaintenanceRequest = {
     ...originalRequest,
@@ -176,6 +180,28 @@ export const updateRequestStatus = async (
         updatedRequest.cancelReason = details.reason;
     }
 
+    requests[requestIndex] = updatedRequest;
+    return updatedRequest;
+};
+
+export const approvePreventiveRequest = async (requestId: string, approverName: string): Promise<MaintenanceRequest> => {
+    await delay(600);
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    if (requestIndex === -1) {
+        throw new Error("Pedido não encontrado");
+    }
+    const originalRequest = requests[requestIndex];
+    if (!originalRequest.isPreventive || originalRequest.status !== RequestStatus.PENDING_APPROVAL) {
+        throw new Error("Este pedido não é uma preventiva pendente de aprovação.");
+    }
+
+    const updatedRequest: MaintenanceRequest = {
+        ...originalRequest,
+        status: undefined, // Torna-se um pedido "Novo"
+        isPreventive: false, // Converte para um pedido normal
+        updatedAt: new Date(),
+        approvedBy: approverName,
+    };
     requests[requestIndex] = updatedRequest;
     return updatedRequest;
 };

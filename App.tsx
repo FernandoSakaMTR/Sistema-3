@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
 import { UserRole, RequestStatus } from './types';
@@ -10,7 +11,9 @@ import RequestDetailPage from './pages/RequestDetailPage';
 import CreateRequestPage from './pages/CreateRequestPage';
 import UserManagementPage from './pages/UserManagementPage';
 import MyProfilePage from './pages/MyProfilePage';
+import PreventiveRequestsPage from './pages/PreventiveRequestsPage';
 import * as api from './services/mockApiService';
+import { SYSTEM_USER } from './constants';
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -96,10 +99,11 @@ const App: React.FC = () => {
         try {
             if (isEditing) {
                 if (!selectedRequestId) return;
+                const originalRequest = requests.find(r => r.id === selectedRequestId);
                 await api.updateRequest(selectedRequestId, requestData, user.id);
                 await fetchRequests();
                 alert('Pedido atualizado com sucesso!');
-                setCurrentPage('request-detail');
+                setCurrentPage(originalRequest?.isPreventive ? 'preventive-requests' : 'request-detail');
             } else {
                 await api.createRequest(requestData);
                 await fetchRequests();
@@ -109,6 +113,22 @@ const App: React.FC = () => {
         } catch (error: any) {
             console.error(`Failed to ${isEditing ? 'update' : 'create'} request:`, error);
             alert(error.message || `Não foi possível ${isEditing ? 'atualizar' : 'criar'} o pedido. Tente novamente.`);
+        }
+    };
+
+    const handleCreatePreventiveRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'requester' | 'status'>) => {
+        const preventiveRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'> = {
+            ...requestData,
+            requester: SYSTEM_USER,
+            status: RequestStatus.PENDING_APPROVAL,
+            isPreventive: true,
+        };
+
+        try {
+            await api.createRequest(preventiveRequestData);
+            await fetchRequests(true); // Refresh list silently
+        } catch (error) {
+            console.error("Falha ao criar pedido preventivo:", error);
         }
     };
 
@@ -135,37 +155,42 @@ const App: React.FC = () => {
     };
 
     const renderPage = () => {
-        if (selectedRequestId && user) {
-            const request = requests.find(r => r.id === selectedRequestId);
-            if (currentPage === 'request-detail') {
-                return <RequestDetailPage 
-                            requestId={selectedRequestId} 
-                            user={user} 
-                            onBack={handleBackToList}
-                            onDeleteRequest={handleDeleteRequest} 
-                            onEditRequest={handleEditRequest}
-                            onRequestUpdate={fetchRequests}
-                        />;
-            }
-            if (currentPage === 'edit-request' && request) {
-                return <CreateRequestPage 
-                            user={user} 
-                            onSubmit={handleUpsertRequest}
-                            requestToEdit={request}
-                            onCancel={() => setCurrentPage('request-detail')}
-                        />;
+        if (user) {
+            if (selectedRequestId) {
+                const request = requests.find(r => r.id === selectedRequestId);
+                if (currentPage === 'request-detail') {
+                    return <RequestDetailPage 
+                                requestId={selectedRequestId} 
+                                user={user} 
+                                onBack={handleBackToList}
+                                onDeleteRequest={handleDeleteRequest} 
+                                onEditRequest={handleEditRequest}
+                                onRequestUpdate={fetchRequests}
+                            />;
+                }
+                if (currentPage === 'edit-request' && request) {
+                    const onCancelPage = request.isPreventive ? 'preventive-requests' : 'request-detail';
+                    return <CreateRequestPage 
+                                user={user} 
+                                onSubmit={handleUpsertRequest}
+                                requestToEdit={request}
+                                onCancel={() => handleNavigation(onCancelPage)}
+                            />;
+                }
             }
         }
 
         switch (currentPage) {
             case 'dashboard':
-                // FIX: Property 'user' does not exist on type 'IntrinsicAttributes & { requests: MaintenanceRequest[]; }'.
-                if (user) return <DashboardPage requests={requests} />;
+                if (user) return <DashboardPage requests={requests} onTriggerPreventiveRequest={handleCreatePreventiveRequest} />;
+                return null;
+            case 'preventive-requests':
+                if (user) return <PreventiveRequestsPage user={user} requests={requests} onEditRequest={handleEditRequest} onRequestUpdate={fetchRequests} />;
                 return null;
             case 'all-requests':
-                return <RequestsListPage title="Todos os Pedidos" requests={requests} onSelectRequest={handleSelectRequest} />;
+                return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} />;
             case 'my-requests':
-                const myRequests = requests.filter(r => r.requester.id === user?.id);
+                const myRequests = requests.filter(r => r.requester.id === user?.id && !r.isPreventive);
                 return <RequestsListPage 
                             title="Meus Pedidos" 
                             requests={myRequests} 
@@ -185,8 +210,7 @@ const App: React.FC = () => {
                  if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
             default:
-                // FIX: Property 'user' does not exist on type 'IntrinsicAttributes & { requests: MaintenanceRequest[]; }'.
-                if (user) return <DashboardPage requests={requests} />;
+                if (user) return <DashboardPage requests={requests} onTriggerPreventiveRequest={handleCreatePreventiveRequest} />;
                 return null;
         }
     };

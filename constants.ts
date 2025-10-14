@@ -1,6 +1,6 @@
 
 import { User, MaintenanceRequest, UserRole, RequestStatus, MaintenanceType, EquipmentStatus } from './types';
-import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon } from '../components/icons';
+import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon, CogIcon } from '../components/icons';
 import React from 'react';
 
 
@@ -11,10 +11,12 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
   [UserRole.MANAGER]: BriefcaseIcon,
   [UserRole.MAINTENANCE]: WrenchIcon,
   [UserRole.REQUESTER]: UserIcon,
+  [UserRole.SYSTEM]: CogIcon,
 };
 
 // Low priority colors
 export const STATUS_COLORS: Record<RequestStatus, string> = {
+  [RequestStatus.PENDING_APPROVAL]: 'bg-purple-100 text-purple-800',
   [RequestStatus.IN_PROGRESS]: 'text-brand-blue',
   [RequestStatus.COMPLETED]: 'bg-ticket-completed text-white',
   [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
@@ -41,6 +43,8 @@ export const EQUIPMENT_STATUS_TEXT_COLORS: Record<EquipmentStatus, string> = {
   [EquipmentStatus.PARTIAL]: 'text-machine-partial',
   [EquipmentStatus.INOPERATIVE]: 'text-machine-down'
 };
+
+export const SYSTEM_USER: User = { id: 0, name: 'Sistema', role: UserRole.SYSTEM, sector: 'Sistema' };
 
 export let USERS: User[] = [
     { id: 1, name: 'Admin Geral', role: UserRole.ADMIN, sector: 'T.I.', password: 'senha123' },

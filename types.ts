@@ -3,7 +3,8 @@ export enum UserRole {
   REQUESTER = 'Solicitante',
   MAINTENANCE = 'Manutenção',
   MANAGER = 'Gestor',
-  ADMIN = 'Admin'
+  ADMIN = 'Admin',
+  SYSTEM = 'Sistema'
 }
 
 export interface User {
@@ -15,6 +16,7 @@ export interface User {
 }
 
 export enum RequestStatus {
+  PENDING_APPROVAL = 'Pendente de Aprovação',
   IN_PROGRESS = 'Em atendimento',
   COMPLETED = 'Concluída',
   CANCELED = 'Cancelada'
@@ -56,4 +58,6 @@ export interface MaintenanceRequest {
   materialsUsed?: string[];
   cancelReason?: string;
   attachments: File[];
+  isPreventive?: boolean;
+  approvedBy?: string;
 }

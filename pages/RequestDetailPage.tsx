@@ -357,6 +357,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         {isFinalized && (
                             <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
                                 <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
+                                {request.approvedBy && <DetailItem label="Aprovado por" value={request.approvedBy} />}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                                     <DetailItem label="Iniciado por" value={request.assignedTo} />
                                     <DetailItem label="Finalizado por" value={request.completedBy} />

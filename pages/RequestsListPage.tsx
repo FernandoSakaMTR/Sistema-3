@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
@@ -132,9 +133,12 @@ const RequestsListPage: React.FC<RequestsListPageProps> = ({ title, requests, on
         return <div className="p-8"><h1 className="text-3xl font-bold text-gray-800 mb-8">{title}</h1><p>Carregando...</p></div>;
     }
 
-    const newRequests = requests.filter(r => !r.status);
-    const openRequests = requests.filter(r => r.status === RequestStatus.IN_PROGRESS);
-    const completedRequests = requests
+    // Filtra para não mostrar pedidos com status 'Pendente de Aprovação'
+    const visibleRequests = requests.filter(r => r.status !== RequestStatus.PENDING_APPROVAL);
+
+    const newRequests = visibleRequests.filter(r => !r.status);
+    const openRequests = visibleRequests.filter(r => r.status === RequestStatus.IN_PROGRESS);
+    const completedRequests = visibleRequests
         .filter(r => r.status === RequestStatus.COMPLETED || r.status === RequestStatus.CANCELED)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
