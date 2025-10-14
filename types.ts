@@ -1,3 +1,4 @@
+
 export enum UserRole {
   REQUESTER = 'Solicitante',
   MAINTENANCE = 'Manutenção',
@@ -20,9 +21,12 @@ export enum RequestStatus {
 }
 
 export enum MaintenanceType {
-  ELECTRICAL = 'Elétrica',
   MECHANICAL = 'Mecânica',
-  OTHER = 'Outro'
+  ELECTRICAL = 'Elétrica',
+  PNEUMATIC = 'Pneumática',
+  LUBRICATION = 'Lubrificação',
+  BELT = 'Correia',
+  GUARDS_AND_PROTECTIONS = 'Carenagens e Proteção'
 }
 
 export enum EquipmentStatus {

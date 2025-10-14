@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User, MaintenanceRequest } from '../types';
 import { MaintenanceType, EquipmentStatus } from '../types';
-import { EQUIPMENT_STATUS_BG_COLORS } from '../constants';
+import { EQUIPMENT_STATUS_BG_COLORS, SECTORS } from '../constants';
 
 interface CreateRequestPageProps {
     user: User;
@@ -13,27 +14,47 @@ interface CreateRequestPageProps {
 const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, requestToEdit, onCancel }) => {
     const isEditing = !!requestToEdit;
     
+    const [requesterName, setRequesterName] = useState('');
     const [description, setDescription] = useState('');
     const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PARTIAL);
     const [equipment, setEquipment] = useState('');
+    const [requesterSector, setRequesterSector] = useState('');
     const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
     const [attachments, setAttachments] = useState<File[]>([]);
-    const [errors, setErrors] = useState<{ equipment?: string, description?: string }>({});
+    const [errors, setErrors] = useState<{ equipment?: string, description?: string, requesterName?: string, requesterSector?: string }>({});
     
     useEffect(() => {
-        if (isEditing) {
+        if (isEditing && requestToEdit) {
+            setRequesterName(requestToEdit.requester.name);
             setDescription(requestToEdit.description);
             setEquipmentStatus(requestToEdit.equipmentStatus);
             setEquipment(requestToEdit.equipment.join(', '));
             setMaintenanceType(requestToEdit.maintenanceType);
             setAttachments(requestToEdit.attachments || []);
+            setRequesterSector(requestToEdit.requesterSector);
+        } else {
+            // Limpa o formulário para um novo pedido
+            setRequesterName('');
+            setDescription('');
+            setEquipmentStatus(EquipmentStatus.PARTIAL);
+            setEquipment('');
+            setMaintenanceType(MaintenanceType.MECHANICAL);
+            setAttachments([]);
+            setErrors({});
+            setRequesterSector(SECTORS.includes(user.sector) ? user.sector : SECTORS[0]);
         }
-    }, [isEditing, requestToEdit]);
+    }, [isEditing, requestToEdit, user.sector]);
 
     const validateForm = () => {
-        const newErrors: { equipment?: string, description?: string } = {};
+        const newErrors: { equipment?: string, description?: string, requesterName?: string, requesterSector?: string } = {};
+        if (!requesterName.trim()) {
+            newErrors.requesterName = 'O campo Nome do Solicitante é obrigatório.';
+        }
         if (!equipment.trim()) {
             newErrors.equipment = 'O campo Equipamento é obrigatório.';
+        }
+        if (!requesterSector) {
+            newErrors.requesterSector = 'Por favor, selecione um setor.';
         }
         if (!description.trim()) {
             newErrors.description = 'O campo de descrição é obrigatório.';
@@ -52,8 +73,8 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         const newRequestData = {
             description,
             equipmentStatus,
-            requester: user,
-            requesterSector: user.sector,
+            requester: { ...user, name: requesterName.trim() },
+            requesterSector,
             equipment: equipment.split(',').map(item => item.trim()),
             maintenanceType,
             attachments,
@@ -67,9 +88,9 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         }
     };
     
-    // Define a base style for better reusability and consistency
-    const baseInputStyle = "mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-brand-blue-light focus:ring-2 focus:ring-brand-blue-light transition-colors";
-    const normalInputStyle = `${baseInputStyle} bg-slate-50 focus:bg-white`;
+    // Estilos aprimorados para melhor visibilidade e usabilidade dos campos.
+    const baseInputStyle = "mt-1 block w-full rounded-md border shadow-sm sm:text-sm focus:border-brand-blue-light focus:ring-2 focus:ring-brand-blue-light focus:bg-white transition-all duration-200";
+    const normalInputStyle = `${baseInputStyle} bg-gray-100 border-gray-300 placeholder-gray-500`;
 
     return (
         <div className="p-8">
@@ -77,17 +98,52 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                 {isEditing ? `Editando Pedido: ${requestToEdit.id}` : 'Abrir Novo Pedido'}
             </h1>
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
-                <div>
-                    <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)*</label>
+                 <div>
+                    <label htmlFor="requesterName" className="block text-sm font-medium text-gray-700">Seu Nome (Solicitante)*</label>
                     <input 
                         type="text" 
-                        id="equipment" 
-                        value={equipment} 
-                        onChange={e => setEquipment(e.target.value)} 
-                        className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} 
-                        placeholder="Ex: Prensa PH-02, Esteira-01" 
+                        id="requesterName" 
+                        value={requesterName} 
+                        onChange={e => setRequesterName(e.target.value)} 
+                        className={`${normalInputStyle} ${errors.requesterName ? 'border-red-500' : ''}`} 
+                        placeholder="Digite seu nome completo" 
                     />
-                    {errors.equipment && <p className="mt-1 text-sm text-red-600">{errors.equipment}</p>}
+                    {errors.requesterName && <p className="mt-1 text-sm text-red-600">{errors.requesterName}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label htmlFor="requesterSector" className="block text-sm font-medium text-gray-700">Setor do Equipamento*</label>
+                        <select
+                            id="requesterSector"
+                            value={requesterSector}
+                            onChange={e => setRequesterSector(e.target.value)}
+                            className={`${normalInputStyle} ${errors.requesterSector ? 'border-red-500' : ''}`}
+                        >
+                            {SECTORS.map(sector => (
+                                <option key={sector} value={sector}>{sector}</option>
+                            ))}
+                        </select>
+                        {errors.requesterSector && <p className="mt-1 text-sm text-red-600">{errors.requesterSector}</p>}
+                    </div>
+                    <div>
+                        <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)*</label>
+                        <input 
+                            type="text" 
+                            id="equipment" 
+                            list="equipment-numbers"
+                            value={equipment} 
+                            onChange={e => setEquipment(e.target.value)} 
+                            className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} 
+                            placeholder="Selecione um número ou digite o nome do equipamento" 
+                        />
+                        <datalist id="equipment-numbers">
+                            {Array.from({ length: 50 }, (_, i) => i + 1).map(num => (
+                                <option key={num} value={String(num)} />
+                            ))}
+                        </datalist>
+                        {errors.equipment && <p className="mt-1 text-sm text-red-600">{errors.equipment}</p>}
+                    </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

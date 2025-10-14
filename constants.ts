@@ -1,9 +1,10 @@
+
 import { User, MaintenanceRequest, UserRole, RequestStatus, MaintenanceType, EquipmentStatus } from './types';
 import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon } from '../components/icons';
 import React from 'react';
 
 
-export const SECTORS: string[] = ['Rosqueadeira', 'Prensa', 'Expedição', 'Outro'];
+export const SECTORS: string[] = ['PRENSA', 'ROSCA', 'FORNO', 'FRESA/FENDA', 'OUTRO'];
 
 export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>>> = {
   [UserRole.ADMIN]: ShieldCheckIcon,
@@ -90,7 +91,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       requester: USERS[4],
       requesterSector: 'Expedição',
       equipment: ['PC-EXP-01'],
-      maintenanceType: MaintenanceType.OTHER,
+      maintenanceType: MaintenanceType.ELECTRICAL,
       createdAt: new Date(2023, 9, 28, 14, 0),
       updatedAt: new Date(2023, 9, 29, 11, 0),
       assignedTo: USERS[2],
