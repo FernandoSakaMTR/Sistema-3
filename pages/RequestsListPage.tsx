@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
-import { TrashIcon, PencilIcon } from '../components/icons';
+import { TrashIcon, PencilIcon, ShieldCheckIcon } from '../components/icons';
 
 interface RequestsListPageProps {
   title: string;
@@ -33,8 +32,10 @@ const RequestCard: React.FC<{
     const isCanceled = request.status === RequestStatus.CANCELED;
     const isFinalized = isCompleted || isCanceled;
     const isNew = !request.status;
+    const isApprovedPreventive = !!request.approvedBy;
 
     const getCardBgColor = () => {
+        if (isApprovedPreventive && isNew) return 'bg-purple-100';
         if (isCompleted) return 'bg-green-50';
         if (isNew) return 'bg-[#D3D1CB]';
         return 'bg-white';
@@ -42,12 +43,18 @@ const RequestCard: React.FC<{
 
     return (
         <div 
-            className={`p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden ${getCardBgColor()}`} 
+            className={`p-5 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden ${getCardBgColor()} ${isApprovedPreventive && isNew ? 'border-l-4 border-purple-500' : ''}`} 
             onClick={onSelect}
         >
             <div className="flex flex-col items-start gap-y-2 sm:flex-row sm:items-start sm:justify-between sm:gap-y-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:min-w-0">
                     <StatusBadge status={request.status} />
+                    {isApprovedPreventive && isNew && (
+                        <span className="inline-flex items-center gap-x-1.5 px-2 py-0.5 text-xs font-medium rounded-md bg-purple-600 text-white">
+                            <ShieldCheckIcon className="h-3.5 w-3.5" />
+                            Origem: Preventiva
+                        </span>
+                    )}
                     <p className="text-sm font-semibold text-brand-blue">{request.id}</p>
                 </div>
                 <div className="flex items-center gap-x-2">
