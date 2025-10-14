@@ -11,6 +11,16 @@ interface CreateRequestPageProps {
     onCancel: () => void;
 }
 
+// Função para formatar a data para o input datetime-local
+const formatDateForInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, requestToEdit, onCancel }) => {
     const isEditing = !!requestToEdit;
     
@@ -21,7 +31,8 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
     const [requesterSector, setRequesterSector] = useState('');
     const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
     const [attachments, setAttachments] = useState<File[]>([]);
-    const [errors, setErrors] = useState<{ equipment?: string, description?: string, requesterName?: string, requesterSector?: string }>({});
+    const [failureTime, setFailureTime] = useState('');
+    const [errors, setErrors] = useState<{ equipment?: string, description?: string, requesterName?: string, requesterSector?: string, failureTime?: string }>({});
     
     useEffect(() => {
         if (isEditing && requestToEdit) {
@@ -32,6 +43,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             setMaintenanceType(requestToEdit.maintenanceType);
             setAttachments(requestToEdit.attachments || []);
             setRequesterSector(requestToEdit.requesterSector);
+            setFailureTime(formatDateForInput(requestToEdit.failureTime));
         } else {
             // Limpa o formulário para um novo pedido
             setRequesterName('');
@@ -42,23 +54,18 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             setAttachments([]);
             setErrors({});
             setRequesterSector(SECTORS.includes(user.sector) ? user.sector : SECTORS[0]);
+            setFailureTime(formatDateForInput(new Date())); // Default para agora
         }
     }, [isEditing, requestToEdit, user.sector]);
 
     const validateForm = () => {
-        const newErrors: { equipment?: string, description?: string, requesterName?: string, requesterSector?: string } = {};
-        if (!requesterName.trim()) {
-            newErrors.requesterName = 'O campo Nome do Solicitante é obrigatório.';
-        }
-        if (!equipment.trim()) {
-            newErrors.equipment = 'O campo Equipamento é obrigatório.';
-        }
-        if (!requesterSector) {
-            newErrors.requesterSector = 'Por favor, selecione um setor.';
-        }
-        if (!description.trim()) {
-            newErrors.description = 'O campo de descrição é obrigatório.';
-        }
+        const newErrors: typeof errors = {};
+        if (!requesterName.trim()) newErrors.requesterName = 'O campo Nome do Solicitante é obrigatório.';
+        if (!equipment.trim()) newErrors.equipment = 'O campo Equipamento é obrigatório.';
+        if (!requesterSector) newErrors.requesterSector = 'Por favor, selecione um setor.';
+        if (!description.trim()) newErrors.description = 'O campo de descrição é obrigatório.';
+        if (!failureTime) newErrors.failureTime = 'A data e hora da falha são obrigatórias.';
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -78,6 +85,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             equipment: equipment.split(',').map(item => item.trim()),
             maintenanceType,
             attachments,
+            failureTime: new Date(failureTime),
         };
         onSubmit(newRequestData, isEditing);
     };
@@ -88,7 +96,6 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         }
     };
     
-    // Estilos aprimorados para melhor visibilidade e usabilidade dos campos.
     const baseInputStyle = "mt-1 block w-full rounded-md border shadow-sm sm:text-sm focus:border-brand-blue-light focus:ring-2 focus:ring-brand-blue-light focus:bg-white transition-all duration-200";
     const normalInputStyle = `${baseInputStyle} bg-gray-100 border-gray-300 placeholder-gray-500`;
 
@@ -101,12 +108,8 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                  <div>
                     <label htmlFor="requesterName" className="block text-sm font-medium text-gray-700">Seu Nome*</label>
                     <input 
-                        type="text" 
-                        id="requesterName" 
-                        value={requesterName} 
-                        onChange={e => setRequesterName(e.target.value)} 
-                        className={`${normalInputStyle} ${errors.requesterName ? 'border-red-500' : ''}`} 
-                        placeholder="Digite seu nome completo" 
+                        type="text" id="requesterName" value={requesterName} onChange={e => setRequesterName(e.target.value)} 
+                        className={`${normalInputStyle} ${errors.requesterName ? 'border-red-500' : ''}`} placeholder="Digite seu nome completo" 
                     />
                     {errors.requesterName && <p className="mt-1 text-sm text-red-600">{errors.requesterName}</p>}
                 </div>
@@ -114,36 +117,25 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="requesterSector" className="block text-sm font-medium text-gray-700">Setor*</label>
-                        <select
-                            id="requesterSector"
-                            value={requesterSector}
-                            onChange={e => setRequesterSector(e.target.value)}
-                            className={`${normalInputStyle} ${errors.requesterSector ? 'border-red-500' : ''}`}
-                        >
-                            {SECTORS.map(sector => (
-                                <option key={sector} value={sector}>{sector}</option>
-                            ))}
+                        <select id="requesterSector" value={requesterSector} onChange={e => setRequesterSector(e.target.value)}
+                            className={`${normalInputStyle} ${errors.requesterSector ? 'border-red-500' : ''}`}>
+                            {SECTORS.map(sector => <option key={sector} value={sector}>{sector}</option>)}
                         </select>
                         {errors.requesterSector && <p className="mt-1 text-sm text-red-600">{errors.requesterSector}</p>}
                     </div>
                     <div>
                         <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento*</label>
-                        <input 
-                            type="text" 
-                            id="equipment" 
-                            list="equipment-numbers"
-                            value={equipment} 
-                            onChange={e => setEquipment(e.target.value)} 
-                            className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} 
-                            placeholder="Selecione um número ou digite o nome do equipamento" 
-                        />
-                        <datalist id="equipment-numbers">
-                            {Array.from({ length: 50 }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={String(num)} />
-                            ))}
-                        </datalist>
+                        <input type="text" id="equipment" list="equipment-numbers" value={equipment} onChange={e => setEquipment(e.target.value)} 
+                            className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} placeholder="Selecione ou digite o nome" />
+                        <datalist id="equipment-numbers">{Array.from({ length: 50 }, (_, i) => i + 1).map(num => <option key={num} value={`Equipamento ${String(num)}`} />)}</datalist>
                         {errors.equipment && <p className="mt-1 text-sm text-red-600">{errors.equipment}</p>}
                     </div>
+                </div>
+                 <div>
+                    <label htmlFor="failureTime" className="block text-sm font-medium text-gray-700">Data e Hora da Falha*</label>
+                    <input type="datetime-local" id="failureTime" value={failureTime} onChange={e => setFailureTime(e.target.value)}
+                           className={`${normalInputStyle} ${errors.failureTime ? 'border-red-500' : ''}`} />
+                    {errors.failureTime && <p className="mt-1 text-sm text-red-600">{errors.failureTime}</p>}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -155,31 +147,18 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                     </div>
                     <div>
                         <label htmlFor="equipmentStatus" className="block text-sm font-medium text-gray-700">Status do Equipamento*</label>
-                        <select 
-                            id="equipmentStatus" 
-                            value={equipmentStatus} 
-                            onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
-                            className={`${baseInputStyle} font-bold ${EQUIPMENT_STATUS_BG_COLORS[equipmentStatus]} text-black`}
-                        >
-                            {Object.values(EquipmentStatus).map(s => (
-                                <option key={s} value={s} className="text-black font-normal bg-white">
-                                    {s}
-                                </option>
-                            ))}
+                        <select id="equipmentStatus" value={equipmentStatus} onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
+                            className={`${baseInputStyle} font-bold ${EQUIPMENT_STATUS_BG_COLORS[equipmentStatus]} text-black`}>
+                            {Object.values(EquipmentStatus).map(s => <option key={s} value={s} className="text-black font-normal bg-white">{s}</option>)}
                         </select>
                     </div>
                 </div>
-                
+
                 <div>
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">O que está ocorrendo?*</label>
-                    <textarea 
-                        id="description" 
-                        value={description} 
-                        onChange={e => setDescription(e.target.value)} 
-                        rows={6} 
+                    <textarea id="description" value={description} onChange={e => setDescription(e.target.value)} rows={6} 
                         className={`${normalInputStyle} text-base p-3 ${errors.description ? 'border-red-500' : ''}`}
-                        placeholder="Descreva o problema com o máximo de detalhes possível..."
-                    ></textarea>
+                        placeholder="Descreva o problema com o máximo de detalhes possível..."></textarea>
                     {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
                 </div>
 

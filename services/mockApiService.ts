@@ -1,3 +1,4 @@
+
 import type { MaintenanceRequest, User } from '../types';
 import { RequestStatus, UserRole } from '../types';
 import { USERS as initialUsers, MOCK_REQUESTS as initialRequests } from '../constants';
@@ -6,7 +7,6 @@ import { USERS as initialUsers, MOCK_REQUESTS as initialRequests } from '../cons
 const deepCopyRequest = (req: MaintenanceRequest): MaintenanceRequest => {
     const newReq = { ...req }; 
     newReq.requester = { ...req.requester };
-    newReq.assignedTo = req.assignedTo ? { ...req.assignedTo } : undefined;
     newReq.equipment = [...req.equipment];
     newReq.attachments = [...req.attachments]; 
     newReq.createdAt = new Date(req.createdAt);
@@ -146,7 +146,15 @@ export const updateRequest = async (
 };
 
 
-export const updateRequestStatus = async (id: string, status: RequestStatus, user: User, reason?: string): Promise<MaintenanceRequest> => {
+export const updateRequestStatus = async (
+    id: string, 
+    status: RequestStatus, 
+    details: { 
+        reason?: string; 
+        assigneeName?: string; 
+        completerName?: string 
+    }
+): Promise<MaintenanceRequest> => {
     await delay(600);
     const requestIndex = requests.findIndex(r => r.id === id);
     if (requestIndex === -1) {
@@ -157,14 +165,15 @@ export const updateRequestStatus = async (id: string, status: RequestStatus, use
 
     if (status === RequestStatus.IN_PROGRESS && !updatedRequest.startedAt) {
         updatedRequest.startedAt = new Date();
-        updatedRequest.assignedTo = user;
+        updatedRequest.assignedTo = details.assigneeName;
     }
     if (status === RequestStatus.COMPLETED) {
         updatedRequest.completedAt = new Date();
-        updatedRequest.maintenanceNotes = reason;
+        updatedRequest.maintenanceNotes = details.reason;
+        updatedRequest.completedBy = details.completerName;
     }
     if (status === RequestStatus.CANCELED) {
-        updatedRequest.cancelReason = reason;
+        updatedRequest.cancelReason = details.reason;
     }
 
     requests[requestIndex] = updatedRequest;

@@ -1,136 +1,228 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Legend, Cell, Label } from 'recharts';
-import type { MaintenanceRequest, User } from '../types';
-import { RequestStatus, EquipmentStatus, UserRole } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { MaintenanceRequest } from '../types';
+import { RequestStatus, EquipmentStatus } from '../types';
+import { getOperationalData } from '../services/operationalDataService';
+import { WrenchIcon, PlusIcon, CogIcon, CheckIcon } from '../components/icons';
+import { SECTORS } from '../constants';
 
-interface DashboardPageProps {
-  requests: MaintenanceRequest[];
-  user: User;
+interface EquipmentMetric {
+  equipmentName: string;
+  sector: string;
+  failureCount: number;
+  mttr: number; // in hours
+  mtbf: number; // in hours
 }
 
-const StatCard: React.FC<{ title: string; value: string | number; color: string }> = ({ title, value, color }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
+    <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
+        <div className={`p-4 rounded-full ${color}`}>
+            {icon}
+        </div>
+        <div className="ml-4">
+            <p className="text-3xl font-bold text-gray-800">{value}</p>
+            <p className="text-sm text-gray-500">{title}</p>
+        </div>
     </div>
 );
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ requests, user }) => {
-  const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
+const SortableTableHeader: React.FC<{
+    label: string;
+    sortKey: keyof EquipmentMetric;
+    sortConfig: { key: keyof EquipmentMetric; direction: 'ascending' | 'descending' } | null;
+    setSortConfig: (config: { key: keyof EquipmentMetric; direction: 'ascending' | 'descending' }) => void;
+    className?: string;
+}> = ({ label, sortKey, sortConfig, setSortConfig, className }) => {
+    const isSorted = sortConfig?.key === sortKey;
+    const direction = isSorted ? sortConfig.direction : 'ascending';
 
-  // Dados para o gráfico de status de pedidos
-  const newCount = requests.filter(r => !r.status).length;
-  const inProgressCount = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
-  const completedCount = requests.filter(r => r.status === RequestStatus.COMPLETED).length;
+    const handleSort = () => {
+        const newDirection = isSorted && direction === 'ascending' ? 'descending' : 'ascending';
+        setSortConfig({ key: sortKey, direction: newDirection });
+    };
 
-  const statusData = [
-    { name: 'Novas', count: newCount, fill: '#95A5A6' },
-    { name: 'Em Andamento', count: inProgressCount, fill: '#3498DB' },
-    { name: 'Concluídas', count: completedCount, fill: '#7DCEA0' },
-  ];
-
-  // Dados para o gráfico de estado de equipamentos
-  const operationalCount = requests.filter(r => r.equipmentStatus === EquipmentStatus.OPERATIONAL).length;
-  const partialCount = requests.filter(r => r.equipmentStatus === EquipmentStatus.PARTIAL).length;
-  const inoperativeCount = requests.filter(r => r.equipmentStatus === EquipmentStatus.INOPERATIVE).length;
-  
-  const equipmentStatusData = [
-    { name: 'Funcionando', value: operationalCount, fill: '#16a34a' },
-    { name: 'Parcialmente Funcionando', value: partialCount, fill: '#F1C40F' },
-    { name: 'Inoperante', value: inoperativeCount, fill: '#E74C3C' },
-  ];
-
-  // --- LÓGICA PARA TEMPO MÉDIO DE REPARO ---
-  const completedRequestsWithTime = requests.filter(
-    r => r.status === RequestStatus.COMPLETED && r.startedAt && r.completedAt
-  );
-
-  const totalRepairTime = completedRequestsWithTime.reduce((acc, r) => {
-    const duration = r.completedAt!.getTime() - r.startedAt!.getTime();
-    return acc + (duration > 0 ? duration : 0);
-  }, 0);
-  
-  const averageRepairTimeMs = completedRequestsWithTime.length > 0 
-    ? totalRepairTime / completedRequestsWithTime.length 
-    : 0;
-  
-  const formatAverageDuration = (ms: number): string => {
-    if (ms <= 0) return '0 min';
-    
-    const totalSeconds = ms / 1000;
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor(((totalSeconds % 86400) % 3600) / 60);
-
-    const parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}min`);
-
-    return parts.join(' ');
-  };
-
-  const formattedAverageRepairTime = formatAverageDuration(averageRepairTimeMs);
+    return (
+        <th scope="col" className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer ${className}`} onClick={handleSort}>
+            <div className="flex items-center">
+                <span>{label}</span>
+                {isSorted && (
+                    <span className="ml-2">{direction === 'ascending' ? '▲' : '▼'}</span>
+                )}
+            </div>
+        </th>
+    );
+};
 
 
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+const DashboardPage: React.FC<{ requests: MaintenanceRequest[] }> = ({ requests }) => {
+    const [equipmentMetrics, setEquipmentMetrics] = useState<EquipmentMetric[]>([]);
+    const [loadingMetrics, setLoadingMetrics] = useState(true);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [selectedSector, setSelectedSector] = useState('Todos');
+    const [sortConfig, setSortConfig] = useState<{ key: keyof EquipmentMetric; direction: 'ascending' | 'descending' }>({ key: 'mtbf', direction: 'ascending' });
 
-      {/* Gráfico de Estado dos Equipamentos */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold text-gray-700 mb-4">Estado dos Equipamentos</h2>
-        <div style={{ width: '100%', height: 400 }}>
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={equipmentStatusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={150}
-                innerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                nameKey="name"
-              >
-                {equipmentStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+    useEffect(() => {
+        const calculateMetrics = async () => {
+            if (requests.length === 0 && !initialLoadComplete) {
+                setEquipmentMetrics([]);
+                setLoadingMetrics(false);
+                setInitialLoadComplete(true);
+                return;
+            }
+            
+            // Apenas exibe o loader na primeira carga. As atualizações subsequentes (polling)
+            // ocorrerão em segundo plano sem piscar a tela.
+            if (!initialLoadComplete) {
+                setLoadingMetrics(true);
+            }
+
+            try {
+                const operationalData = await getOperationalData();
+                const requestsByEquipment: Record<string, MaintenanceRequest[]> = {};
+
+                // Group requests by equipment (handles multiple equipment per request)
+                for (const req of requests) {
+                    for (const eq of req.equipment) {
+                        if (!requestsByEquipment[eq]) {
+                            requestsByEquipment[eq] = [];
+                        }
+                        requestsByEquipment[eq].push(req);
+                    }
+                }
+
+                const metrics: EquipmentMetric[] = [];
+
+                for (const equipmentName in requestsByEquipment) {
+                    const eqRequests = requestsByEquipment[equipmentName];
+                    const failureCount = eqRequests.length;
+                    const sector = eqRequests[0]?.requesterSector || 'N/D';
+
+                    // Calculate MTTR for this equipment
+                    const completedWithTimes = eqRequests.filter(r => r.status === RequestStatus.COMPLETED && r.startedAt && r.completedAt && r.completedAt.getTime() > r.startedAt.getTime());
+                    const totalRepairTimeMs = completedWithTimes.reduce((acc, r) => acc + (r.completedAt!.getTime() - r.startedAt!.getTime()), 0);
+                    const mttrMs = completedWithTimes.length > 0 ? totalRepairTimeMs / completedWithTimes.length : 0;
+                    const mttrHours = mttrMs / (1000 * 60 * 60);
+
+                    // Calculate MTBF for this equipment
+                    const uptimeMs = operationalData[equipmentName]?.totalOperationalTimeMs || 0;
+                    const mtbfMs = failureCount > 0 ? uptimeMs / failureCount : uptimeMs; // Avoid division by zero
+                    const mtbfHours = mtbfMs / (1000 * 60 * 60);
+
+                    metrics.push({
+                        equipmentName,
+                        sector,
+                        failureCount,
+                        mttr: parseFloat(mttrHours.toFixed(2)),
+                        mtbf: parseFloat(mtbfHours.toFixed(2)),
+                    });
+                }
+                setEquipmentMetrics(metrics);
+            } catch (error) {
+                console.error("Failed to calculate equipment metrics:", error);
+                setEquipmentMetrics([]); // Clear metrics on error to avoid stale data
+            } finally {
+                setLoadingMetrics(false);
+                setInitialLoadComplete(true);
+            }
+        };
+
+        calculateMetrics();
+    }, [requests]);
+
+    const sortedAndFilteredMetrics = useMemo(() => {
+        let filtered = [...equipmentMetrics];
+        if (selectedSector !== 'Todos') {
+            filtered = filtered.filter(m => m.sector === selectedSector);
+        }
+
+        if (sortConfig !== null) {
+            filtered.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return filtered;
+    }, [equipmentMetrics, selectedSector, sortConfig]);
+
+    const newRequests = requests.filter(r => !r.status).length;
+    const inProgressRequests = requests.filter(r => r.status === RequestStatus.IN_PROGRESS).length;
+    const machinesDown = requests.filter(r => r.equipmentStatus === EquipmentStatus.INOPERATIVE && r.status !== RequestStatus.COMPLETED && r.status !== RequestStatus.CANCELED).length;
+    const completedThisMonth = requests.filter(r => {
+        const now = new Date();
+        return r.status === RequestStatus.COMPLETED && r.completedAt && r.completedAt.getMonth() === now.getMonth() && r.completedAt.getFullYear() === now.getFullYear();
+    }).length;
+
+    return (
+        <div className="p-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Novos Pedidos" value={newRequests} icon={<PlusIcon className="h-8 w-8 text-blue-800" />} color="bg-blue-200" />
+                <StatCard title="Em Atendimento" value={inProgressRequests} icon={<WrenchIcon className="h-8 w-8 text-yellow-800" />} color="bg-yellow-200" />
+                <StatCard title="Máquinas Paradas" value={machinesDown} icon={<CogIcon className="h-8 w-8 text-red-800" />} color="bg-red-200" />
+                <StatCard title="Concluídos no Mês" value={completedThisMonth} icon={<CheckIcon className="h-8 w-8 text-green-800" />} color="bg-green-200" />
+            </div>
+
+            <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                    <h2 className="text-xl font-bold text-gray-700">Análise de Confiabilidade por Equipamento</h2>
+                    <div>
+                        <label htmlFor="sector-filter" className="text-sm font-medium text-gray-700 mr-2">Filtrar por Setor:</label>
+                        <select
+                            id="sector-filter"
+                            value={selectedSector}
+                            onChange={(e) => setSelectedSector(e.target.value)}
+                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        >
+                            <option value="Todos">Todos os Setores</option>
+                            {SECTORS.map(sector => (
+                                <option key={sector} value={sector}>{sector}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {loadingMetrics ? (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Calculando métricas...</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <SortableTableHeader label="Equipamento" sortKey="equipmentName" sortConfig={sortConfig} setSortConfig={setSortConfig} />
+                                    <SortableTableHeader label="Setor" sortKey="sector" sortConfig={sortConfig} setSortConfig={setSortConfig} />
+                                    <SortableTableHeader label="Falhas" sortKey="failureCount" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
+                                    <SortableTableHeader label="MTTR (h)" sortKey="mttr" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
+                                    <SortableTableHeader label="MTBF (h)" sortKey="mtbf" sortConfig={sortConfig} setSortConfig={setSortConfig} className="text-center" />
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {sortedAndFilteredMetrics.length > 0 ? sortedAndFilteredMetrics.map(metric => (
+                                    <tr key={metric.equipmentName} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{metric.equipmentName}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{metric.sector}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{metric.failureCount}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{metric.mttr}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-center text-brand-blue">{metric.mtbf}</td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500">Nenhum dado encontrado para os filtros selecionados.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Novos Pedidos" value={newCount} color="text-gray-500" />
-        <StatCard title="Em Andamento" value={inProgressCount} color="text-ticket-progress" />
-        <StatCard title="Concluídas" value={completedCount} color="text-ticket-completed" />
-        {isManagerOrAdmin && (
-          <StatCard title="Tempo Médio de Reparo" value={formattedAverageRepairTime} color="text-gray-900" />
-        )}
-      </div>
-
-      {/* Gráfico de Pedidos por Status */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold text-gray-700 mb-4">Status dos Pedidos</h2>
-        <div style={{ width: '100%', height: 400 }}>
-          <ResponsiveContainer>
-            <BarChart data={statusData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" dy={10} />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default DashboardPage;

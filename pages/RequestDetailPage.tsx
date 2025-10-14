@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 // FIX: Import RequestStatus as a value to use its members.
 import type { MaintenanceRequest, User } from '../types';
@@ -69,12 +70,6 @@ const ReasonBox: React.FC<{ title: string; reason: string; color: 'red' | 'yello
     );
 };
 
-const MODAL_CONFIG: Record<RequestStatus, { title: string; placeholder: string; isReasonRequired: boolean }> = {
-    [RequestStatus.CANCELED]: { title: 'Motivo do Cancelamento', placeholder: 'Por favor, descreva o motivo do cancelamento*', isReasonRequired: true },
-    [RequestStatus.COMPLETED]: { title: 'Descreva o que foi feito', placeholder: 'Descreva o serviço realizado para constar nas notas da manutenção*', isReasonRequired: true },
-    [RequestStatus.IN_PROGRESS]: { title: '', placeholder: '', isReasonRequired: false },
-};
-
 const ActionModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -104,9 +99,11 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [loading, setLoading] = useState(true);
     const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
 
-    const [isReasonModalOpen, setIsReasonModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentAction, setCurrentAction] = useState<RequestStatus | null>(null);
     const [reason, setReason] = useState('');
+    const [assigneeName, setAssigneeName] = useState('');
+    const [completerName, setCompleterName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchRequest = useCallback(async () => {
@@ -135,31 +132,31 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     }, [request]);
 
     const handleActionSelect = (action: RequestStatus) => {
-        const config = MODAL_CONFIG[action];
-        if (config.title) {
-            setCurrentAction(action);
-            setReason('');
-            setIsReasonModalOpen(true);
-        } else {
-            handleConfirmAction(action, '');
-        }
+        setCurrentAction(action);
+        setReason('');
+        setAssigneeName('');
+        setCompleterName('');
+        setIsModalOpen(true);
     };
 
-    const handleCloseReasonModal = () => {
+    const handleCloseModal = () => {
         if (isSubmitting) return;
-        setIsReasonModalOpen(false);
+        setIsModalOpen(false);
         setCurrentAction(null);
     };
 
-    const handleConfirmAction = async (actionToConfirm?: RequestStatus, reasonToSubmit?: string) => {
-        const action = actionToConfirm || currentAction;
-        if (!action) return;
+    const handleConfirmAction = async () => {
+        if (!currentAction) return;
 
         setIsSubmitting(true);
         try {
-            await updateRequestStatus(requestId, action, user, reasonToSubmit ?? reason);
+            await updateRequestStatus(requestId, currentAction, { 
+                reason, 
+                assigneeName, 
+                completerName 
+            });
             await Promise.all([fetchRequest(), onRequestUpdate()]);
-            handleCloseReasonModal();
+            handleCloseModal();
         } catch (error) {
             console.error("Failed to update status:", error);
             alert("Não foi possível atualizar o status do pedido.");
@@ -187,8 +184,68 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const canDeleteRequestAsRequester = isOwner && isEditable && user.role !== UserRole.MAINTENANCE && user.role !== UserRole.ADMIN;
     const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isCompleted && !isCanceled;
 
-    const modalConfig = currentAction ? MODAL_CONFIG[currentAction] : null;
-    const isConfirmDisabled = isSubmitting || (modalConfig?.isReasonRequired && !reason.trim());
+    const checkConfirmDisabled = () => {
+        if (isSubmitting) return true;
+        switch (currentAction) {
+            case RequestStatus.IN_PROGRESS:
+                return !assigneeName.trim();
+            case RequestStatus.COMPLETED:
+                return !reason.trim() || !completerName.trim();
+            case RequestStatus.CANCELED:
+                return !reason.trim();
+            default:
+                return true;
+        }
+    };
+    const isConfirmDisabled = checkConfirmDisabled();
+
+    const getModalContent = () => {
+        const baseInputStyle = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm";
+        switch (currentAction) {
+            case RequestStatus.IN_PROGRESS:
+                return (
+                    <div>
+                        <label htmlFor="assigneeName" className="block text-sm font-medium text-gray-700">Nome do Responsável*</label>
+                        <input type="text" id="assigneeName" value={assigneeName} onChange={e => setAssigneeName(e.target.value)}
+                               className={baseInputStyle} placeholder="Digite o nome completo" />
+                    </div>
+                );
+            case RequestStatus.COMPLETED:
+                return (
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="maintenanceNotes" className="block text-sm font-medium text-gray-700">O que foi feito?*</label>
+                            <textarea id="maintenanceNotes" value={reason} onChange={e => setReason(e.target.value)} rows={4}
+                                      className={baseInputStyle} placeholder="Descreva o serviço realizado..."></textarea>
+                        </div>
+                        <div>
+                            <label htmlFor="completerName" className="block text-sm font-medium text-gray-700">Finalizado por*</label>
+                            <input type="text" id="completerName" value={completerName} onChange={e => setCompleterName(e.target.value)}
+                                   className={baseInputStyle} placeholder="Digite o nome de quem finalizou" />
+                        </div>
+                    </div>
+                );
+            case RequestStatus.CANCELED:
+                return (
+                    <div>
+                        <label htmlFor="cancelReason" className="block text-sm font-medium text-gray-700">Motivo do Cancelamento*</label>
+                        <textarea id="cancelReason" value={reason} onChange={(e) => setReason(e.target.value)}
+                                  placeholder="Por favor, descreva o motivo do cancelamento..." rows={4} className={baseInputStyle} />
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const getModalTitle = () => {
+        switch (currentAction) {
+            case RequestStatus.IN_PROGRESS: return "Iniciar Atendimento";
+            case RequestStatus.COMPLETED: return "Concluir Atendimento";
+            case RequestStatus.CANCELED: return "Cancelar Pedido";
+            default: return "";
+        }
+    }
 
     const isManagerOrAdmin = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role);
     const waitingTime = request.startedAt ? formatDuration(request.createdAt, request.startedAt) : undefined;
@@ -199,32 +256,28 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     return (
         <div className="p-8">
             <ActionModal
-                isOpen={isReasonModalOpen && !!modalConfig}
-                onClose={handleCloseReasonModal}
-                title={modalConfig?.title || ''}
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                title={getModalTitle()}
             >
-                <textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder={modalConfig?.placeholder}
-                    rows={4}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-                <div className="flex justify-end pt-4 space-x-3">
-                    <button 
-                        type="button" 
-                        onClick={handleCloseReasonModal}
-                        disabled={isSubmitting}
-                        className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Cancelar
-                    </button>
-                    <button 
-                        type="button" 
-                        onClick={() => handleConfirmAction()} 
-                        disabled={isConfirmDisabled}
-                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
-                        {isSubmitting ? 'Confirmando...' : 'Confirmar'}
-                    </button>
+                <div className="space-y-6">
+                    {getModalContent()}
+                    <div className="flex justify-end pt-4 space-x-3">
+                        <button 
+                            type="button" 
+                            onClick={handleCloseModal}
+                            disabled={isSubmitting}
+                            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Cancelar
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={handleConfirmAction} 
+                            disabled={isConfirmDisabled}
+                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            {isSubmitting ? 'Confirmando...' : 'Confirmar'}
+                        </button>
+                    </div>
                 </div>
             </ActionModal>
             
@@ -304,8 +357,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         {isFinalized && (
                             <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
                                 <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <DetailItem label="Responsável" value={request.assignedTo?.name} />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                    <DetailItem label="Iniciado por" value={request.assignedTo} />
+                                    <DetailItem label="Finalizado por" value={request.completedBy} />
                                     <DetailItem label="Início" value={formatDate(request.startedAt)} />
                                     <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
                                 </div>

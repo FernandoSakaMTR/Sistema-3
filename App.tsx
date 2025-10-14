@@ -159,7 +159,8 @@ const App: React.FC = () => {
 
         switch (currentPage) {
             case 'dashboard':
-                if (user) return <DashboardPage requests={requests} user={user} />;
+                // FIX: Property 'user' does not exist on type 'IntrinsicAttributes & { requests: MaintenanceRequest[]; }'.
+                if (user) return <DashboardPage requests={requests} />;
                 return null;
             case 'all-requests':
                 return <RequestsListPage title="Todos os Pedidos" requests={requests} onSelectRequest={handleSelectRequest} />;
@@ -184,7 +185,8 @@ const App: React.FC = () => {
                  if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
             default:
-                if (user) return <DashboardPage requests={requests} user={user} />;
+                // FIX: Property 'user' does not exist on type 'IntrinsicAttributes & { requests: MaintenanceRequest[]; }'.
+                if (user) return <DashboardPage requests={requests} />;
                 return null;
         }
     };

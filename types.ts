@@ -44,10 +44,12 @@ export interface MaintenanceRequest {
   requesterSector: string;
   equipment: string[];
   maintenanceType: MaintenanceType;
+  failureTime: Date; // Data e hora exata da falha para cálculo de MTBF
   createdAt: Date;
   deadline?: Date;
   updatedAt: Date;
-  assignedTo?: User;
+  assignedTo?: string; // Nome do responsável que iniciou
+  completedBy?: string; // Nome de quem finalizou
   startedAt?: Date;
   completedAt?: Date;
   maintenanceNotes?: string;
