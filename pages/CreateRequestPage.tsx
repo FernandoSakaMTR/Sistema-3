@@ -99,7 +99,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             </h1>
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
                  <div>
-                    <label htmlFor="requesterName" className="block text-sm font-medium text-gray-700">Seu Nome (Solicitante)*</label>
+                    <label htmlFor="requesterName" className="block text-sm font-medium text-gray-700">Seu Nome*</label>
                     <input 
                         type="text" 
                         id="requesterName" 
@@ -113,7 +113,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label htmlFor="requesterSector" className="block text-sm font-medium text-gray-700">Setor do Equipamento*</label>
+                        <label htmlFor="requesterSector" className="block text-sm font-medium text-gray-700">Setor*</label>
                         <select
                             id="requesterSector"
                             value={requesterSector}
@@ -127,7 +127,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                         {errors.requesterSector && <p className="mt-1 text-sm text-red-600">{errors.requesterSector}</p>}
                     </div>
                     <div>
-                        <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento(s)*</label>
+                        <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento*</label>
                         <input 
                             type="text" 
                             id="equipment" 

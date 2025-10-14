@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 // FIX: Import RequestStatus as a value to use its members.
 import type { MaintenanceRequest, User } from '../types';
@@ -254,7 +255,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-6">
                     <DetailItem label="Solicitante" value={request.requester.name} />
                     <DetailItem label="Setor" value={request.requesterSector} />
-                    <DetailItem label="Equipamento(s)" value={request.equipment} />
+                    <DetailItem label="Equipamento" value={request.equipment} />
                     <DetailItem label="Tipo" value={request.maintenanceType} />
                     <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
                 </div>
