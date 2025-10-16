@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
 import StatusBadge from '../components/StatusBadge';
@@ -138,19 +138,76 @@ const TabButton: React.FC<{
 
 const RequestsListPage: React.FC<RequestsListPageProps> = ({ title, requests, onSelectRequest, user, onDeleteRequest, onEditRequest }) => {
     const [activeTab, setActiveTab] = useState('new');
+    const [selectedYear, setSelectedYear] = useState<number | null>(null);
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
     if (!requests) {
         return <div className="p-8"><h1 className="text-3xl font-bold text-gray-800 mb-8">{title}</h1><p>Carregando...</p></div>;
     }
 
-    // Filtra para não mostrar pedidos com status 'Pendente de Aprovação'
     const visibleRequests = requests.filter(r => r.status !== RequestStatus.PENDING_APPROVAL);
 
     const newRequests = visibleRequests.filter(r => !r.status);
     const openRequests = visibleRequests.filter(r => r.status === RequestStatus.IN_PROGRESS);
     const completedRequests = visibleRequests
         .filter(r => r.status === RequestStatus.COMPLETED || r.status === RequestStatus.CANCELED)
-        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+        .sort((a, b) => (b.completedAt || b.updatedAt).getTime() - (a.completedAt || a.updatedAt).getTime());
+
+    // 1. Group ALL completed requests by year and month. This is the single source of truth for history.
+    const groupedCompletedRequests = useMemo(() => {
+        const groups: { [year: number]: { [month: number]: MaintenanceRequest[] } } = {};
+        completedRequests.forEach(req => {
+            const date = req.completedAt || req.updatedAt;
+            const year = date.getFullYear();
+            const month = date.getMonth(); // 0-11
+            if (!groups[year]) groups[year] = {};
+            if (!groups[year][month]) groups[year][month] = [];
+            groups[year][month].push(req);
+        });
+        return groups;
+    }, [completedRequests]);
+    
+    // 2. Derive available years directly from the complete grouping.
+    const availableYears = useMemo(() => {
+        return Object.keys(groupedCompletedRequests).map(Number).sort((a, b) => b - a);
+    }, [groupedCompletedRequests]);
+
+    // 3. Filter for recent requests separately. This doesn't affect the historical data pool.
+    const recentCompletedRequests = useMemo(() => {
+        const now = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(now.getDate() - 30);
+        
+        return completedRequests.filter(req => {
+            const completionDate = req.completedAt || req.updatedAt;
+            return completionDate >= thirtyDaysAgo && completionDate <= now;
+        });
+    }, [completedRequests]);
+    
+    // Effect to manage default filter selection
+    useEffect(() => {
+        if (activeTab === 'completed' && availableYears.length > 0 && selectedYear === null) {
+            const latestYear = availableYears[0];
+            setSelectedYear(latestYear);
+            const monthsForYear = Object.keys(groupedCompletedRequests[latestYear]).map(Number).sort((a, b) => b - a);
+            if (monthsForYear.length > 0) {
+                setSelectedMonth(monthsForYear[0]);
+            }
+        }
+    }, [activeTab, availableYears, selectedYear, groupedCompletedRequests]);
+
+    // Effect to manage month selection when year changes
+    useEffect(() => {
+        if (selectedYear && groupedCompletedRequests[selectedYear]) {
+            const monthsForYear = Object.keys(groupedCompletedRequests[selectedYear]).map(Number).sort((a, b) => b - a);
+            if (monthsForYear.length > 0 && (selectedMonth === null || !monthsForYear.includes(selectedMonth))) {
+                setSelectedMonth(monthsForYear[0]);
+            } else if (monthsForYear.length === 0) {
+                setSelectedMonth(null);
+            }
+        }
+    }, [selectedYear, selectedMonth, groupedCompletedRequests]);
+
 
     const renderRequestList = (reqs: MaintenanceRequest[], emptyMessage: string) => {
         if (reqs.length === 0) {
@@ -176,12 +233,75 @@ const RequestsListPage: React.FC<RequestsListPageProps> = ({ title, requests, on
             </div>
         );
     };
+
+    const renderCompletedList = () => {
+        const monthsForSelectedYear = selectedYear ? Object.keys(groupedCompletedRequests[selectedYear] || {}).map(Number).sort((a, b) => a - b) : [];
+        const requestsForSelectedPeriod = (selectedYear !== null && selectedMonth !== null && groupedCompletedRequests[selectedYear]?.[selectedMonth]) 
+            ? groupedCompletedRequests[selectedYear][selectedMonth] 
+            : [];
+
+        return (
+            <div className="mt-6 space-y-12">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-700 mb-4">Finalizados Recentemente (Últimos 30 dias)</h2>
+                    {renderRequestList(recentCompletedRequests, 'Nenhum pedido finalizado nos últimos 30 dias.')}
+                </div>
+
+                {availableYears.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-700 mb-4">Consultar Histórico</h2>
+                        <div className="bg-white p-4 rounded-lg shadow-md space-y-4 sm:space-y-0 sm:flex sm:items-center sm:gap-x-6">
+                            <div>
+                                <label htmlFor="year-select" className="block text-sm font-medium text-gray-700">Ano</label>
+                                <select 
+                                    id="year-select"
+                                    value={selectedYear || ''}
+                                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                    className="mt-1 block w-full sm:w-auto rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {monthsForSelectedYear.map(month => {
+                                        const monthName = new Date(2000, month).toLocaleString('pt-BR', { month: 'short' });
+                                        const capitalizedMonthName = (monthName.charAt(0).toUpperCase() + monthName.slice(1)).replace('.', '');
+                                        const isActive = month === selectedMonth;
+                                        return (
+                                            <button
+                                                key={month}
+                                                onClick={() => setSelectedMonth(month)}
+                                                className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${
+                                                    isActive 
+                                                        ? 'bg-brand-blue text-white shadow'
+                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                }`}
+                                            >
+                                                {capitalizedMonthName}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6">
+                           {renderRequestList(requestsForSelectedPeriod, 'Nenhum pedido encontrado para o período selecionado.')}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
     
     const getCurrentList = () => {
         switch(activeTab) {
             case 'new': return renderRequestList(newRequests, 'Nenhum pedido novo.');
             case 'open': return renderRequestList(openRequests, 'Nenhum pedido em aberto no momento.');
-            case 'completed': return renderRequestList(completedRequests, 'Nenhum pedido finalizado encontrado.');
+            case 'completed': return renderCompletedList();
             default: return null;
         }
     };
