@@ -26,7 +26,6 @@ const deepCopyRequests = (reqs: MaintenanceRequest[]): MaintenanceRequest[] => {
 let users: User[] = JSON.parse(JSON.stringify(initialUsers));
 let requests: MaintenanceRequest[] = deepCopyRequests(initialRequests);
 let nextUserId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
-let nextRequestId = requests.length > 0 ? Math.max(...requests.map(r => parseInt(r.id.split('-')[1]))) + 1 : 1;
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
@@ -107,11 +106,24 @@ export const getRequestById = async (id: string): Promise<MaintenanceRequest> =>
 
 export const createRequest = async (newRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<MaintenanceRequest> => {
     await delay(800);
+    
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = today.getFullYear();
+    const datePrefix = `${day}${month}${year}`;
+
+    // Find requests with the same date prefix to determine the next sequential number
+    const todayRequests = requests.filter(r => r.id.startsWith(`MAN-${datePrefix}-`));
+    const nextSequence = todayRequests.length + 1;
+
+    const newId = `MAN-${datePrefix}-${String(nextSequence).padStart(3, '0')}`;
+
     const newRequest: MaintenanceRequest = {
         ...newRequestData,
-        id: `MAN-${String(nextRequestId++).padStart(3, '0')}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        id: newId,
+        createdAt: today,
+        updatedAt: today,
     };
     requests.unshift(newRequest);
     return newRequest;
