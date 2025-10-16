@@ -66,6 +66,11 @@ export const XIcon = createIcon(
     <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
 );
 
+export const ClockIcon = createIcon(
+    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z" />
+);
+
+
 export const PauseIcon = createIcon(
     <path d="M14,19H18V5H14M6,19H10V5H6V19Z" />
 );

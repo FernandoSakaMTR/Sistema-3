@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
 import { UserRole, RequestStatus, EquipmentStatus, MaintenanceType } from './types';
@@ -193,7 +191,7 @@ const App: React.FC = () => {
                 await api.updateRequest(selectedRequestId, requestData, user.id);
                 await fetchRequests();
                 alert('Pedido atualizado com sucesso!');
-                setCurrentPage(originalRequest?.isPreventive ? 'preventive-requests' : 'request-detail');
+                setCurrentPage(originalRequest?.isPreventive ? 'approvals' : 'request-detail');
             } else {
                 await api.createRequest(requestData);
                 await fetchRequests();
@@ -243,7 +241,7 @@ const App: React.FC = () => {
                             />;
                 }
                 if (currentPage === 'edit-request' && request) {
-                    const onCancelPage = request.isPreventive ? 'preventive-requests' : 'request-detail';
+                    const onCancelPage = request.isPreventive ? 'approvals' : 'request-detail';
                     return <CreateRequestPage 
                                 user={user} 
                                 onSubmit={handleUpsertRequest}
@@ -258,9 +256,18 @@ const App: React.FC = () => {
             case 'dashboard':
                 if (user) return <DashboardPage requests={requests} />;
                 return null;
-            case 'preventive-requests':
-                if (user) return <PreventiveRequestsPage user={user} requests={requests} onEditRequest={handleEditRequest} onRequestUpdate={fetchRequests} onSelectRequest={handleSelectRequest} />;
-                return null;
+            case 'approvals':
+                 if (user && [UserRole.MANAGER, UserRole.ADMIN].includes(user.role)) {
+                    const pendingPreventives = requests.filter(r => r.isPreventive && r.status === RequestStatus.PENDING_APPROVAL);
+                    const pendingCompletions = requests.filter(r => r.status === RequestStatus.PENDING_COMPLETION_APPROVAL);
+                    return <PreventiveRequestsPage
+                                pendingPreventiveRequests={pendingPreventives}
+                                pendingCompletionRequests={pendingCompletions}
+                                onSelectRequest={handleSelectRequest} 
+                            />;
+                 }
+                 setCurrentPage('dashboard'); // Redirect non-admins
+                 return null;
             case 'all-requests':
                 return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} user={user} />;
             case 'my-requests':

@@ -18,6 +18,7 @@ export interface User {
 export enum RequestStatus {
   PENDING_APPROVAL = 'Pendente de Aprovação',
   IN_PROGRESS = 'Em atendimento',
+  PENDING_COMPLETION_APPROVAL = 'Aguardando Aprovação da Conclusão',
   COMPLETED = 'Concluída',
   CANCELED = 'Cancelada'
 }
@@ -61,4 +62,6 @@ export interface MaintenanceRequest {
   isPreventive?: boolean;
   approvedBy?: string;
   checklist?: { item: string; checked: boolean }[];
+  requestedCompletedAt?: Date;
+  completionChangeReason?: string;
 }

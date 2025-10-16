@@ -130,26 +130,19 @@ export const updateRequest = async (
 
   const originalRequest = requests[requestIndex];
 
-  // Permite edição para:
-  // 1. Pedidos novos (sem status)
-  // 2. Preventivos pendentes de aprovação
-  // 3. Pedidos em andamento (para salvar checklist)
   const isEditableStatus = !originalRequest.status || 
                            originalRequest.status === RequestStatus.PENDING_APPROVAL ||
                            originalRequest.status === RequestStatus.IN_PROGRESS;
 
   if (!isEditableStatus) {
-      throw new Error('Pedidos concluídos ou cancelados não podem ser editados.');
+      throw new Error('Pedidos com status final ou pendente de aprovação não podem ser editados diretamente.');
   }
   
-  // Se não for um pedido em andamento, verifica a permissão de edição do solicitante
   if (originalRequest.status !== RequestStatus.IN_PROGRESS) {
-      // Se for preventivo, um gestor (que não é o requester "Sistema") pode editar.
       if (!originalRequest.isPreventive && originalRequest.requester.id !== userId) {
           throw new Error('Você não tem permissão para editar este pedido.');
       }
   }
-
 
   const updatedRequest: MaintenanceRequest = {
     ...originalRequest,
@@ -209,12 +202,76 @@ export const approvePreventiveRequest = async (requestId: string, approverName: 
 
     const updatedRequest: MaintenanceRequest = {
         ...originalRequest,
-        requester: { ...approverUser, name: approverName }, // Altera o solicitante para quem aprovou, usando o nome digitado no formulário.
-        status: undefined, // Torna-se um pedido "Novo"
-        isPreventive: false, // Converte para um pedido normal
+        requester: { ...approverUser, name: approverName }, 
+        status: undefined, 
+        isPreventive: false, 
         updatedAt: new Date(),
         approvedBy: approverName,
     };
+    requests[requestIndex] = updatedRequest;
+    return updatedRequest;
+};
+
+export const submitCompletionForApproval = async (
+    requestId: string,
+    updateData: {
+        requestedCompletedAt: Date;
+        completionChangeReason: string;
+        maintenanceNotes: string;
+        completedBy: string;
+        checklist: { item: string; checked: boolean }[];
+    }
+): Promise<MaintenanceRequest> => {
+    await delay(800);
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    if (requestIndex === -1) throw new Error('Pedido não encontrado.');
+    
+    const originalRequest = requests[requestIndex];
+    const updatedRequest: MaintenanceRequest = {
+        ...originalRequest,
+        ...updateData,
+        status: RequestStatus.PENDING_COMPLETION_APPROVAL,
+        updatedAt: new Date(),
+    };
+    requests[requestIndex] = updatedRequest;
+    return updatedRequest;
+};
+
+export const resolveCompletionApproval = async (
+    requestId: string,
+    isApproved: boolean
+): Promise<MaintenanceRequest> => {
+    await delay(600);
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    if (requestIndex === -1) throw new Error('Pedido não encontrado.');
+
+    const originalRequest = requests[requestIndex];
+    if (originalRequest.status !== RequestStatus.PENDING_COMPLETION_APPROVAL) {
+        throw new Error('Este pedido não está aguardando aprovação de conclusão.');
+    }
+
+    let updatedRequest: MaintenanceRequest;
+
+    if (isApproved) {
+        updatedRequest = {
+            ...originalRequest,
+            status: RequestStatus.COMPLETED,
+            completedAt: originalRequest.requestedCompletedAt,
+            requestedCompletedAt: undefined,
+            completionChangeReason: undefined,
+            updatedAt: new Date(),
+        };
+    } else {
+        // Rejeitado: volta para "Em atendimento"
+        updatedRequest = {
+            ...originalRequest,
+            status: RequestStatus.IN_PROGRESS,
+            requestedCompletedAt: undefined,
+            completionChangeReason: undefined,
+            maintenanceNotes: originalRequest.maintenanceNotes + `\n\n[SISTEMA] Alteração de data de conclusão rejeitada em ${new Date().toLocaleString()}.`,
+            updatedAt: new Date(),
+        };
+    }
     requests[requestIndex] = updatedRequest;
     return updatedRequest;
 };

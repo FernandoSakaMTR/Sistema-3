@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DashboardIcon, ListIcon, PlusIcon, UserIcon, XIcon, ShieldCheckIcon } from './icons';
 import type { User } from '../types';
@@ -75,9 +74,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {isManagerOrAdmin && (
             <NavItem
               icon={<ShieldCheckIcon className="h-6 w-6" />}
-              label="Preventivas"
-              isActive={currentPage === 'preventive-requests'}
-              onClick={() => handleNavigation('preventive-requests')}
+              label="Aprovações"
+              isActive={currentPage === 'approvals'}
+              onClick={() => handleNavigation('approvals')}
               isCollapsed={isDesktopCollapsed}
             />
           )}

@@ -17,6 +17,7 @@ export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>
 export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.PENDING_APPROVAL]: 'bg-purple-100 text-purple-800',
   [RequestStatus.IN_PROGRESS]: 'text-brand-blue',
+  [RequestStatus.PENDING_COMPLETION_APPROVAL]: 'bg-orange-100 text-orange-800',
   [RequestStatus.COMPLETED]: 'bg-ticket-completed text-white',
   [RequestStatus.CANCELED]: 'bg-status-canceled text-white'
 };

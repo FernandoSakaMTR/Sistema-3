@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
-import { getRequestById, updateRequestStatus, approvePreventiveRequest, updateRequest } from '../services/mockApiService';
+import { getRequestById, updateRequestStatus, approvePreventiveRequest, updateRequest, submitCompletionForApproval, resolveCompletionApproval } from '../services/mockApiService';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
 import { PaperclipIcon, XIcon, CheckIcon, WrenchIcon, ShieldCheckIcon } from '../components/icons';
@@ -14,6 +14,16 @@ interface RequestDetailPageProps {
     onEditRequest: (id: string) => void;
     onRequestUpdate: () => Promise<void>;
 }
+
+// Função para formatar a data para o input datetime-local
+const formatDateForInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 const formatDate = (date: Date | undefined | null): string | undefined => {
     if (!date) return undefined;
@@ -54,15 +64,16 @@ const DetailItem: React.FC<{ label: string; value?: string | string[] | null, ch
     </div>
 );
 
-const ReasonBox: React.FC<{ title: string; reason: string; color: 'red' | 'yellow' }> = ({ title, reason, color }) => {
+const ReasonBox: React.FC<{ title: string; reason: string; color: 'red' | 'yellow' | 'orange' }> = ({ title, reason, color }) => {
     const colorClasses = {
         red: 'bg-red-50 border-red-300 text-red-900',
-        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900'
+        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900',
+        orange: 'bg-orange-50 border-orange-300 text-orange-900',
     };
     return (
         <div className={`p-4 mt-4 border-l-4 rounded-md ${colorClasses[color]}`}>
             <h3 className="font-bold">{title}</h3>
-            <p className="text-sm mt-1">{reason}</p>
+            <p className="text-sm mt-1 whitespace-pre-wrap">{reason}</p>
         </div>
     );
 };
@@ -112,6 +123,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     // State for checklist
     const [checklist, setChecklist] = useState<{ item: string; checked: boolean; }[]>([]);
+    
+    // State for completion date change
+    const [isCompletionDateChanged, setIsCompletionDateChanged] = useState(false);
+    const [newCompletionDate, setNewCompletionDate] = useState(formatDateForInput(new Date()));
+    const [completionChangeReason, setCompletionChangeReason] = useState('');
+
 
     const fetchRequest = useCallback(async () => {
         setLoading(true);
@@ -146,7 +163,10 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         setActionReason('');
         setAssigneeName('');
         setCompleterName('');
-        // Restore checklist state from the original request when opening the modal
+        setIsCompletionDateChanged(false);
+        setNewCompletionDate(formatDateForInput(new Date()));
+        setCompletionChangeReason('');
+
         if (request?.checklist) {
             setChecklist([...request.checklist]);
         }
@@ -163,16 +183,28 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         if (!currentAction) return;
         setIsSubmitting(true);
         try {
-            // Handle checklist saving on completion
-            if (currentAction === RequestStatus.COMPLETED && request?.checklist) {
-                const updateData = {
-                    status: RequestStatus.COMPLETED,
-                    completedAt: new Date(),
-                    maintenanceNotes: actionReason,
-                    completedBy: completerName,
-                    checklist: checklist,
-                };
-                await updateRequest(requestId, updateData, user.id);
+            if (currentAction === RequestStatus.COMPLETED) {
+                if (isCompletionDateChanged) {
+                     await submitCompletionForApproval(requestId, {
+                        requestedCompletedAt: new Date(newCompletionDate),
+                        completionChangeReason: completionChangeReason,
+                        maintenanceNotes: actionReason,
+                        completedBy: completerName,
+                        checklist: checklist,
+                    });
+                    alert('Solicitação de alteração de data enviada para aprovação!');
+                    onBack('all-requests');
+                    return;
+                } else {
+                     const updateData = {
+                        status: RequestStatus.COMPLETED,
+                        completedAt: new Date(),
+                        maintenanceNotes: actionReason,
+                        completedBy: completerName,
+                        checklist: checklist,
+                    };
+                    await updateRequest(requestId, updateData, user.id);
+                }
             } else {
                  await updateRequestStatus(requestId, currentAction, { 
                     reason: actionReason, 
@@ -183,9 +215,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
            
             await Promise.all([fetchRequest(), onRequestUpdate()]);
             handleCloseActionModal();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to update status:", error);
-            alert("Não foi possível atualizar o status do pedido.");
+            alert(error.message || "Não foi possível atualizar o status do pedido.");
         } finally {
             setIsSubmitting(false);
         }
@@ -202,7 +234,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             await approvePreventiveRequest(requestId, approverName, user);
             await onRequestUpdate();
             alert('Pedido preventivo aprovado com sucesso!');
-            onBack('preventive-requests');
+            onBack('approvals');
         } catch (error: any) {
             console.error("Failed to approve request:", error);
             alert(error.message || "Não foi possível aprovar o pedido.");
@@ -221,10 +253,26 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             await updateRequestStatus(requestId, RequestStatus.CANCELED, { reason: rejectionReason });
             await onRequestUpdate();
             alert('Pedido preventivo rejeitado com sucesso.');
-            onBack('preventive-requests');
+            onBack('approvals');
         } catch (error: any) {
             console.error("Failed to reject request:", error);
             alert(error.message || "Não foi possível rejeitar o pedido.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+     // --- Completion Approval Handlers ---
+    const handleCompletionApproval = async (isApproved: boolean) => {
+        setIsSubmitting(true);
+        try {
+            await resolveCompletionApproval(requestId, isApproved);
+            await onRequestUpdate();
+            alert(`Alteração de conclusão ${isApproved ? 'aprovada' : 'rejeitada'} com sucesso.`);
+            onBack('approvals');
+        } catch (error: any) {
+            console.error("Failed to resolve completion approval:", error);
+            alert(error.message || "Não foi possível processar a aprovação.");
         } finally {
             setIsSubmitting(false);
         }
@@ -255,9 +303,11 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const canEditRequest = isOwner && isEditable;
     const canDeleteRequestAsRequester = isOwner && isEditable && user.role !== UserRole.MAINTENANCE && user.role !== UserRole.ADMIN;
     const isPendingPreventive = request.isPreventive && request.status === RequestStatus.PENDING_APPROVAL;
+    const isPendingCompletionApproval = request.status === RequestStatus.PENDING_COMPLETION_APPROVAL;
     const canManagePreventive = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) && isPendingPreventive;
+    const canManageCompletion = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) && isPendingCompletionApproval;
 
-    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isFinalized;
+    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isFinalized && !isPendingCompletionApproval;
 
     const checkConfirmDisabled = () => {
         if (isSubmitting) return true;
@@ -265,6 +315,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             case RequestStatus.IN_PROGRESS:
                 return !assigneeName.trim();
             case RequestStatus.COMPLETED:
+                if (isCompletionDateChanged) {
+                    return !actionReason.trim() || !completerName.trim() || !newCompletionDate || !completionChangeReason.trim();
+                }
                 return !actionReason.trim() || !completerName.trim();
             case RequestStatus.CANCELED:
                 return !actionReason.trim();
@@ -315,6 +368,30 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                             <label htmlFor="completerName" className="block text-sm font-medium text-gray-700">Finalizado por*</label>
                             <input type="text" id="completerName" value={completerName} onChange={e => setCompleterName(e.target.value)}
                                    className={baseInputStyle} placeholder="Digite o nome de quem finalizou" />
+                        </div>
+
+                         <div className="border-t pt-4">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isCompletionDateChanged}
+                                    onChange={() => setIsCompletionDateChanged(!isCompletionDateChanged)}
+                                    className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
+                                />
+                                <span className="ml-3 text-sm font-medium text-gray-800">Alterar data e hora de conclusão?</span>
+                            </label>
+                             {isCompletionDateChanged && (
+                                <div className="mt-4 space-y-4 pl-8 border-l-2 border-gray-200">
+                                    <div>
+                                        <label htmlFor="newCompletionDate" className="block text-sm font-medium text-gray-700">Nova Data e Hora da Conclusão*</label>
+                                        <input type="datetime-local" id="newCompletionDate" value={newCompletionDate} onChange={e => setNewCompletionDate(e.target.value)} className={baseInputStyle} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="completionChangeReason" className="block text-sm font-medium text-gray-700">Justificativa da Alteração*</label>
+                                        <textarea id="completionChangeReason" value={completionChangeReason} onChange={e => setCompletionChangeReason(e.target.value)} rows={3} className={baseInputStyle} placeholder="Ex: Falha na conexão com a internet no local"></textarea>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -492,6 +569,27 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     </div>
                 ) : (
                     <>
+                        {isPendingCompletionApproval && (
+                            <div className="border-t pt-8">
+                                <div className="p-6 rounded-lg bg-orange-50 border-2 border-dashed border-orange-300">
+                                    <h2 className="text-xl font-bold text-orange-800 flex items-center mb-4">
+                                        Aprovação de Conclusão Pendente
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500">Conclusão registrada em</p>
+                                            <p className="text-md text-gray-500 font-semibold line-through">{formatDate(request.updatedAt)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-orange-600">Nova data de conclusão solicitada</p>
+                                            <p className="text-lg text-orange-900 font-bold">{formatDate(request.requestedCompletedAt)}</p>
+                                        </div>
+                                    </div>
+                                    <ReasonBox title="Justificativa da Alteração" reason={request.completionChangeReason || 'N/A'} color="orange" />
+                                    <p className="text-sm mt-2 text-gray-600">Finalizado por: <span className="font-semibold">{request.completedBy}</span></p>
+                                </div>
+                            </div>
+                        )}
                         {/* Description Section */}
                         <div className="border-t pt-8">
                             <h2 className="text-sm font-medium text-gray-500 mb-2">O que está ocorrendo?</h2>
@@ -593,7 +691,19 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         </div>
 
                         {/* --- ACTION BUTTONS --- */}
-                        {canManagePreventive ? (
+                         {canManageCompletion ? (
+                            <div className="border-t pt-8">
+                                <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações de Aprovação da Conclusão</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    <button onClick={() => handleCompletionApproval(true)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
+                                        Aprovar Alteração
+                                    </button>
+                                    <button onClick={() => handleCompletionApproval(false)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
+                                        Rejeitar Alteração
+                                    </button>
+                                </div>
+                            </div>
+                        ) : canManagePreventive ? (
                              <div className="border-t pt-8">
                                 <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações da Preventiva</h3>
                                 <div className="flex flex-wrap gap-4">
