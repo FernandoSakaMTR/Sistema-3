@@ -269,11 +269,11 @@ const App: React.FC = () => {
                  setCurrentPage('dashboard'); // Redirect non-admins
                  return null;
             case 'all-requests':
-                return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} user={user} />;
+                return <RequestsListPage title="Ordens de Serviço" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} user={user} />;
             case 'my-requests':
                 const myRequests = requests.filter(r => r.requester.id === user?.id && !r.isPreventive);
                 return <RequestsListPage 
-                            title="Meus Pedidos" 
+                            title="Minhas OS" 
                             requests={myRequests} 
                             onSelectRequest={handleSelectRequest} 
                             user={user}

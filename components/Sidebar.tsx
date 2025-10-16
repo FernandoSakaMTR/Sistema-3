@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {canViewAll && (
             <NavItem
               icon={<ListIcon className="h-6 w-6" />}
-              label="Todos os Pedidos"
+              label="Ordens de Serviço"
               isActive={currentPage === 'all-requests'}
               onClick={() => handleNavigation('all-requests')}
               isCollapsed={isDesktopCollapsed}
@@ -92,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {user.role !== UserRole.MANAGER && (
             <NavItem
               icon={<ListIcon className="h-6 w-6" />}
-              label="Meus Pedidos"
+              label="Minhas OS"
               isActive={currentPage === 'my-requests'}
               onClick={() => handleNavigation('my-requests')}
               isCollapsed={isDesktopCollapsed}
@@ -101,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
           {canCreate && (
             <NavItem
               icon={<PlusIcon className="h-6 w-6" />}
-              label="Abrir Pedido"
+              label="Abrir Nova OS"
               isActive={currentPage === 'create-request'}
               onClick={() => handleNavigation('create-request')}
               isCollapsed={isDesktopCollapsed}

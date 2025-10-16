@@ -579,7 +579,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                  <div>
                     <button onClick={() => onBack()} className="text-brand-blue hover:underline mb-2">&larr; Voltar para a lista</button>
                     <h1 className="text-3xl font-bold text-gray-800">
-                       Detalhes do Pedido <span className="text-gray-500 font-medium">{request.id}</span>
+                       Detalhes da Ordem de Serviço <span className="text-gray-500 font-medium">{request.id}</span>
                     </h1>
                 </div>
                 <div>

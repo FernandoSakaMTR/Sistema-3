@@ -57,7 +57,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="text-center">
           <WrenchIcon className="mx-auto h-16 w-16 text-brand-blue" />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sistema de Manutenção
+            Ordem de Serviço
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Selecione um perfil para continuar

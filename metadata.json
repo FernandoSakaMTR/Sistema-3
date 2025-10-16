@@ -1,5 +1,5 @@
 {
-  "name": "Sistema de Pedidos de Manutenção",
-  "description": "Uma aplicação web para registrar, monitorar, priorizar e controlar pedidos de manutenção de forma eficiente e intuitiva.",
+  "name": "Ordem de Serviço",
+  "description": "Uma aplicação web para registrar, monitorar, priorizar e controlar Ordens de Serviço de forma eficiente e intuitiva.",
   "requestFramePermissions": []
 }

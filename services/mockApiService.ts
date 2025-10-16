@@ -114,10 +114,10 @@ export const createRequest = async (newRequestData: Omit<MaintenanceRequest, 'id
     const datePrefix = `${day}${month}${year}`;
 
     // Find requests with the same date prefix to determine the next sequential number
-    const todayRequests = requests.filter(r => r.id.startsWith(`MAN-${datePrefix}-`));
+    const todayRequests = requests.filter(r => r.id.startsWith(`OS-${datePrefix}-`));
     const nextSequence = todayRequests.length + 1;
 
-    const newId = `MAN-${datePrefix}-${String(nextSequence).padStart(3, '0')}`;
+    const newId = `OS-${datePrefix}-${String(nextSequence).padStart(3, '0')}`;
 
     const newRequest: MaintenanceRequest = {
         ...newRequestData,

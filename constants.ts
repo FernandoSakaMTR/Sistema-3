@@ -97,7 +97,7 @@ const file2 = new File(["Conteúdo simulado de um PDF com diagrama elétrico"], 
 
 export let MOCK_REQUESTS: MaintenanceRequest[] = [
     {
-      id: 'MAN-001',
+      id: 'OS-001',
       description: 'A prensa PH-02 está com um vazamento de óleo na base do cilindro principal. Necessita de verificação urgente pois está parando a produção.',
       status: RequestStatus.IN_PROGRESS,
       equipmentStatus: EquipmentStatus.INOPERATIVE,
@@ -113,7 +113,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       attachments: [file1],
     },
     {
-      id: 'MAN-002',
+      id: 'OS-002',
       description: 'O painel da Rosqueadeira R-05 está desarmando o disjuntor principal intermitentemente.',
       equipmentStatus: EquipmentStatus.PARTIAL,
       requester: USERS[4],
@@ -126,7 +126,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       attachments: [file2],
     },
     {
-      id: 'MAN-003',
+      id: 'OS-003',
       description: 'O computador da bancada de expedição não está ligando. Já foi testado em outra tomada.',
       status: RequestStatus.COMPLETED,
       equipmentStatus: EquipmentStatus.OPERATIONAL,
@@ -145,7 +145,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       attachments: [],
     },
     {
-      id: 'MAN-005',
+      id: 'OS-005',
       description: 'Uma das lâmpadas do galpão das prensas está queimada.',
       status: RequestStatus.CANCELED,
       equipmentStatus: EquipmentStatus.OPERATIONAL,
@@ -157,12 +157,12 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       createdAt: new Date(2023, 10, 4, 11, 0),
       updatedAt: new Date(2023, 10, 4, 11, 30),
       assignedTo: 'Bruno Costa',
-      cancelReason: 'Pedido duplicado. Já existe a OS MAN-006 para o mesmo problema.',
+      cancelReason: 'Pedido duplicado. Já existe a OS OS-006 para o mesmo problema.',
       attachments: [],
     },
     // Adicionando mais um evento para a Prensa PH-02 para calcular MTBF
     {
-      id: 'MAN-004',
+      id: 'OS-004',
       description: 'Prensa PH-02 parou novamente, mesmo problema de vazamento.',
       status: RequestStatus.COMPLETED,
       equipmentStatus: EquipmentStatus.OPERATIONAL,
@@ -182,7 +182,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
     },
     // PREVENTIVAS DE EXEMPLO PARA CADA TIPO
     {
-      id: 'MAN-006',
+      id: 'OS-006',
       description: 'Manutenção Preventiva Elétrica Programada para Rosqueadeira R-08.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,
@@ -198,7 +198,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       checklist: PREVENTIVE_CHECKLISTS[MaintenanceType.ELECTRICAL].map(item => ({ item, checked: false })),
     },
     {
-      id: 'MAN-007',
+      id: 'OS-007',
       description: 'Manutenção Preventiva Mecânica Programada para Prensa PH-05.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,
@@ -214,7 +214,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       checklist: PREVENTIVE_CHECKLISTS[MaintenanceType.MECHANICAL].map(item => ({ item, checked: false })),
     },
     {
-      id: 'MAN-008',
+      id: 'OS-008',
       description: 'Manutenção Preventiva Pneumática Programada para Forno F-03.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,
@@ -230,7 +230,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       checklist: PREVENTIVE_CHECKLISTS[MaintenanceType.PNEUMATIC].map(item => ({ item, checked: false })),
     },
     {
-      id: 'MAN-009',
+      id: 'OS-009',
       description: 'Manutenção Preventiva de Lubrificação Programada para Fresa FR-12.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,
@@ -246,7 +246,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       checklist: PREVENTIVE_CHECKLISTS[MaintenanceType.LUBRICATION].map(item => ({ item, checked: false })),
     },
     {
-      id: 'MAN-010',
+      id: 'OS-010',
       description: 'Inspeção Preventiva de Correias na Esteira de Saída ES-01.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,
@@ -262,7 +262,7 @@ export let MOCK_REQUESTS: MaintenanceRequest[] = [
       checklist: PREVENTIVE_CHECKLISTS[MaintenanceType.BELT].map(item => ({ item, checked: false })),
     },
     {
-      id: 'MAN-011',
+      id: 'OS-011',
       description: 'Verificação Preventiva de Carenagens e Proteções da Célula de Solda CS-02.',
       status: RequestStatus.PENDING_APPROVAL,
       isPreventive: true,

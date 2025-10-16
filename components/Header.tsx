@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate, onToggleDes
         >
             <MenuIcon className="h-6 w-6 text-gray-600" />
         </button>
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 hidden sm:block">Sistema de Manutenção</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 hidden sm:block">Ordem de Serviço</h1>
       </div>
       <div className="relative">
         <button

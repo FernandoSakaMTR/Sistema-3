@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import type { User, MaintenanceRequest } from '../types';
 import { MaintenanceType, EquipmentStatus } from '../types';
@@ -112,7 +113,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
     return (
         <div className="p-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-8">
-                {isEditing ? `Editando Pedido: ${requestToEdit.id}` : 'Abrir Novo Pedido'}
+                {isEditing ? `Editando Ordem de Serviço: ${requestToEdit.id}` : 'Abrir Nova OS'}
             </h1>
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
                  <div>
@@ -202,7 +203,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                         Cancelar
                     </button>
                     <button type="submit" className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light">
-                        {isEditing ? 'Salvar Alterações' : 'Enviar Pedido'}
+                        {isEditing ? 'Salvar Alterações' : 'Enviar Ordem de Serviço'}
                     </button>
                 </div>
             </form>
