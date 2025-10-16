@@ -284,6 +284,28 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         setChecklist(newChecklist);
     };
 
+    const handleDatePartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDatePart = e.target.value;
+        const currentTimePart = newCompletionDate.split('T')[1] || '00:00';
+        setNewCompletionDate(`${newDatePart}T${currentTimePart}`);
+    };
+
+    const handleHourPartChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newHourPart = e.target.value;
+        const currentParts = newCompletionDate.split('T');
+        const currentDatePart = currentParts[0];
+        const currentMinutePart = currentParts[1] ? currentParts[1].split(':')[1] : '00';
+        setNewCompletionDate(`${currentDatePart}T${newHourPart}:${currentMinutePart}`);
+    };
+
+    const handleMinutePartChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newMinutePart = e.target.value;
+        const currentParts = newCompletionDate.split('T');
+        const currentDatePart = currentParts[0];
+        const currentHourPart = currentParts[1] ? currentParts[1].split(':')[0] : '00';
+        setNewCompletionDate(`${currentDatePart}T${currentHourPart}:${newMinutePart}`);
+    };
+
     if (loading) {
         return <div className="p-8">Carregando detalhes do pedido...</div>;
     }
@@ -329,6 +351,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const getModalContent = () => {
         const baseInputStyle = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm";
+        const prominentInputStyle = "mt-2 block w-full rounded-lg border-2 border-gray-300 shadow-sm p-3 text-lg bg-gray-50 focus:border-brand-blue focus:ring focus:ring-brand-blue-light focus:ring-opacity-50 transition-colors duration-200";
+
         switch (currentAction) {
             case RequestStatus.IN_PROGRESS:
                 return (
@@ -362,12 +386,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         <div>
                             <label htmlFor="maintenanceNotes" className="block text-sm font-medium text-gray-700">O que foi feito?*</label>
                             <textarea id="maintenanceNotes" value={actionReason} onChange={e => setActionReason(e.target.value)} rows={4}
-                                      className={baseInputStyle} placeholder="Descreva o serviço realizado..."></textarea>
+                                      className={prominentInputStyle} placeholder="Descreva o serviço realizado..."></textarea>
                         </div>
                         <div>
                             <label htmlFor="completerName" className="block text-sm font-medium text-gray-700">Finalizado por*</label>
                             <input type="text" id="completerName" value={completerName} onChange={e => setCompleterName(e.target.value)}
-                                   className={baseInputStyle} placeholder="Digite o nome de quem finalizou" />
+                                   className={prominentInputStyle} placeholder="Digite o nome de quem finalizou" />
                         </div>
 
                          <div className="border-t pt-4">
@@ -383,12 +407,52 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                              {isCompletionDateChanged && (
                                 <div className="mt-4 space-y-4 pl-8 border-l-2 border-gray-200">
                                     <div>
-                                        <label htmlFor="newCompletionDate" className="block text-sm font-medium text-gray-700">Nova Data e Hora da Conclusão*</label>
-                                        <input type="datetime-local" id="newCompletionDate" value={newCompletionDate} onChange={e => setNewCompletionDate(e.target.value)} className={baseInputStyle} />
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Nova Data e Hora da Conclusão*</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 border rounded-md bg-gray-50">
+                                            <div>
+                                                <label htmlFor="newCompletionDate_date" className="block text-xs font-medium text-gray-600">Data</label>
+                                                <input
+                                                    type="date"
+                                                    id="newCompletionDate_date"
+                                                    value={newCompletionDate.split('T')[0]}
+                                                    onChange={handleDatePartChange}
+                                                    className={baseInputStyle}
+                                                />
+                                            </div>
+                                            <div className="flex items-end gap-2">
+                                                <div>
+                                                    <label htmlFor="newCompletionDate_hour" className="block text-xs font-medium text-gray-600">Hora</label>
+                                                    <select
+                                                        id="newCompletionDate_hour"
+                                                        value={newCompletionDate.split('T')[1]?.split(':')[0] || '00'}
+                                                        onChange={handleHourPartChange}
+                                                        className={baseInputStyle}
+                                                    >
+                                                        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(hour => (
+                                                            <option key={hour} value={hour}>{hour}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <span className="pb-2 font-bold text-gray-500">:</span>
+                                                <div>
+                                                    <label htmlFor="newCompletionDate_minute" className="block text-xs font-medium text-gray-600">Minuto</label>
+                                                    <select
+                                                        id="newCompletionDate_minute"
+                                                        value={newCompletionDate.split('T')[1]?.split(':')[1] || '00'}
+                                                        onChange={handleMinutePartChange}
+                                                        className={baseInputStyle}
+                                                    >
+                                                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(minute => (
+                                                            <option key={minute} value={minute}>{minute}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label htmlFor="completionChangeReason" className="block text-sm font-medium text-gray-700">Justificativa da Alteração*</label>
-                                        <textarea id="completionChangeReason" value={completionChangeReason} onChange={e => setCompletionChangeReason(e.target.value)} rows={3} className={baseInputStyle} placeholder="Ex: Falha na conexão com a internet no local"></textarea>
+                                        <textarea id="completionChangeReason" value={completionChangeReason} onChange={e => setCompletionChangeReason(e.target.value)} rows={3} className={prominentInputStyle} placeholder="Ex: Falha na conexão com a internet no local"></textarea>
                                     </div>
                                 </div>
                             )}
