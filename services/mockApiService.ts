@@ -1,4 +1,5 @@
 
+
 import type { MaintenanceRequest, User } from '../types';
 import { RequestStatus, UserRole } from '../types';
 import { USERS as initialUsers, MOCK_REQUESTS as initialRequests } from '../constants';
@@ -13,6 +14,9 @@ const deepCopyRequest = (req: MaintenanceRequest): MaintenanceRequest => {
     newReq.updatedAt = new Date(req.updatedAt);
     newReq.startedAt = req.startedAt ? new Date(req.startedAt) : undefined;
     newReq.completedAt = req.completedAt ? new Date(req.completedAt) : undefined;
+    if (req.checklist) {
+        newReq.checklist = req.checklist.map(item => ({ ...item }));
+    }
     return newReq;
 }
 
@@ -128,14 +132,24 @@ export const updateRequest = async (
 
   const originalRequest = requests[requestIndex];
 
-  // Permite edição para pedidos novos (sem status) OU preventivos pendentes de aprovação
-  if (originalRequest.status && originalRequest.status !== RequestStatus.PENDING_APPROVAL) {
-      throw new Error('Apenas pedidos novos ou preventivos pendentes de aprovação podem ser editados.');
-  }
+  // Permite edição para:
+  // 1. Pedidos novos (sem status)
+  // 2. Preventivos pendentes de aprovação
+  // 3. Pedidos em andamento (para salvar checklist)
+  const isEditableStatus = !originalRequest.status || 
+                           originalRequest.status === RequestStatus.PENDING_APPROVAL ||
+                           originalRequest.status === RequestStatus.IN_PROGRESS;
 
-  // Se for preventivo, um gestor (que não é o requester "Sistema") pode editar.
-  if (!originalRequest.isPreventive && originalRequest.requester.id !== userId) {
-      throw new Error('Você não tem permissão para editar este pedido.');
+  if (!isEditableStatus) {
+      throw new Error('Pedidos concluídos ou cancelados não podem ser editados.');
+  }
+  
+  // Se não for um pedido em andamento, verifica a permissão de edição do solicitante
+  if (originalRequest.status !== RequestStatus.IN_PROGRESS) {
+      // Se for preventivo, um gestor (que não é o requester "Sistema") pode editar.
+      if (!originalRequest.isPreventive && originalRequest.requester.id !== userId) {
+          throw new Error('Você não tem permissão para editar este pedido.');
+      }
   }
 
 

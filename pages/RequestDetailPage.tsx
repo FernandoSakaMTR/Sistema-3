@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
-import { getRequestById, updateRequestStatus, approvePreventiveRequest } from '../services/mockApiService';
+import { getRequestById, updateRequestStatus, approvePreventiveRequest, updateRequest } from '../services/mockApiService';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
-import { PaperclipIcon, XIcon, CheckIcon } from '../components/icons';
+import { PaperclipIcon, XIcon, CheckIcon, WrenchIcon } from '../components/icons';
 
 interface RequestDetailPageProps {
     requestId: string;
@@ -110,12 +110,17 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [approverName, setApproverName] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
 
+    // State for checklist
+    const [checklist, setChecklist] = useState<{ item: string; checked: boolean; }[]>([]);
 
     const fetchRequest = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getRequestById(requestId);
             setRequest(data || null);
+            if (data?.checklist) {
+                setChecklist(data.checklist);
+            }
         } catch(error) {
             console.error("Failed to fetch request details:", error);
             setRequest(null);
@@ -141,6 +146,10 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         setActionReason('');
         setAssigneeName('');
         setCompleterName('');
+        // Restore checklist state from the original request when opening the modal
+        if (request?.checklist) {
+            setChecklist([...request.checklist]);
+        }
         setIsActionModalOpen(true);
     };
     
@@ -154,11 +163,24 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         if (!currentAction) return;
         setIsSubmitting(true);
         try {
-            await updateRequestStatus(requestId, currentAction, { 
-                reason: actionReason, 
-                assigneeName, 
-                completerName 
-            });
+            // Handle checklist saving on completion
+            if (currentAction === RequestStatus.COMPLETED && request?.checklist) {
+                const updateData = {
+                    status: RequestStatus.COMPLETED,
+                    completedAt: new Date(),
+                    maintenanceNotes: actionReason,
+                    completedBy: completerName,
+                    checklist: checklist,
+                };
+                await updateRequest(requestId, updateData, user.id);
+            } else {
+                 await updateRequestStatus(requestId, currentAction, { 
+                    reason: actionReason, 
+                    assigneeName, 
+                    completerName 
+                });
+            }
+           
             await Promise.all([fetchRequest(), onRequestUpdate()]);
             handleCloseActionModal();
         } catch (error) {
@@ -208,6 +230,11 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         }
     };
 
+    const handleChecklistChange = (index: number) => {
+        const newChecklist = [...checklist];
+        newChecklist[index].checked = !newChecklist[index].checked;
+        setChecklist(newChecklist);
+    };
 
     if (loading) {
         return <div className="p-8">Carregando detalhes do pedido...</div>;
@@ -260,6 +287,24 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             case RequestStatus.COMPLETED:
                 return (
                     <div className="space-y-4">
+                        {request?.checklist && request.checklist.length > 0 && (
+                            <div>
+                                <h3 className="block text-sm font-medium text-gray-700 mb-2">Checklist de Verificação*</h3>
+                                <div className="space-y-3 border rounded-md p-4 bg-gray-50 max-h-48 overflow-y-auto">
+                                    {checklist.map((item, index) => (
+                                        <label key={index} className="flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={item.checked}
+                                                onChange={() => handleChecklistChange(index)}
+                                                className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
+                                            />
+                                            <span className={`ml-3 text-md text-gray-800`}>{item.item}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="maintenanceNotes" className="block text-sm font-medium text-gray-700">O que foi feito?*</label>
                             <textarea id="maintenanceNotes" value={actionReason} onChange={e => setActionReason(e.target.value)} rows={4}
@@ -299,6 +344,23 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const totalRepairTime = (request.status === RequestStatus.COMPLETED && request.startedAt && request.completedAt) 
         ? formatDuration(request.startedAt, request.completedAt) 
         : undefined;
+
+    const getChecklistContainerClass = () => {
+        if (isPendingPreventive) return 'bg-purple-50 border border-purple-200';
+        if (request.status === RequestStatus.IN_PROGRESS) return 'bg-yellow-50 border border-yellow-200';
+        if (isCompleted) return 'bg-green-50 border border-green-200';
+        return 'bg-blue-50 border border-blue-200';
+    };
+
+    const getChecklistTitleClass = () => {
+        if (isPendingPreventive) return 'text-purple-800';
+        if (request.status === RequestStatus.IN_PROGRESS) return 'text-yellow-800';
+        if (isCompleted) return 'text-green-800';
+        return 'text-brand-blue';
+    };
+
+    const shouldDisplayChecklist = request.checklist && request.checklist.length > 0 && (request.isPreventive || request.approvedBy);
+
 
     return (
         <div className="p-8">
@@ -410,6 +472,35 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         {request.description}
                     </p>
                 </div>
+                
+                {/* Checklist Section */}
+                {shouldDisplayChecklist && (
+                    <div className="border-t pt-8">
+                        <div className={`p-6 rounded-lg ${getChecklistContainerClass()}`}>
+                            <h2 className={`text-xl font-bold flex items-center mb-4 ${getChecklistTitleClass()}`}>
+                                <WrenchIcon className="h-6 w-6 mr-3" />
+                                Checklist de Verificação Preventiva
+                            </h2>
+                            {isPendingPreventive && <p className="text-sm text-purple-700 mb-4">Este é o checklist que a equipe de manutenção deverá seguir após a aprovação.</p>}
+                            {request.status === RequestStatus.IN_PROGRESS && <p className="text-sm text-yellow-700 mb-4">Este checklist deve ser preenchido ao concluir o atendimento.</p>}
+                             {isCompleted && <p className="text-sm text-green-700 mb-4">Checklist preenchido na conclusão do serviço.</p>}
+                            <div className="space-y-3">
+                                {checklist.map((item, index) => (
+                                    <label key={index} className={`flex items-center p-2 rounded-md transition-colors`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={item.checked}
+                                            disabled
+                                            className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
+                                        />
+                                        <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
 
                 {/* Attachments and Maintenance Section */}
                 <div className="border-t pt-8">

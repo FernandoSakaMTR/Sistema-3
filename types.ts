@@ -1,4 +1,4 @@
-
+// FIX: Removed self-import of `UserRole`.
 export enum UserRole {
   REQUESTER = 'Solicitante',
   MAINTENANCE = 'Manutenção',
@@ -60,4 +60,5 @@ export interface MaintenanceRequest {
   attachments: File[];
   isPreventive?: boolean;
   approvedBy?: string;
+  checklist?: { item: string; checked: boolean }[];
 }

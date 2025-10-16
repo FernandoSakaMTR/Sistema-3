@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
-import { UserRole, RequestStatus, EquipmentStatus } from './types';
+import { UserRole, RequestStatus, EquipmentStatus, MaintenanceType } from './types';
 import LoginPage from './pages/LoginPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -14,7 +15,7 @@ import MyProfilePage from './pages/MyProfilePage';
 import PreventiveRequestsPage from './pages/PreventiveRequestsPage';
 import * as api from './services/mockApiService';
 import { getOperationalData } from './services/operationalDataService';
-import { SYSTEM_USER } from './constants';
+import { SYSTEM_USER, PREVENTIVE_CHECKLISTS } from './constants';
 
 const PREVENTIVE_MAINTENANCE_CYCLE_HOURS = 300;
 const PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE = 0.85;
@@ -102,17 +103,22 @@ const App: React.FC = () => {
                         );
                         
                         if (!hasActiveWorkOrder) {
+                             const maintenanceType = lastCompletedRequest.maintenanceType;
+                             const checklistTemplate = PREVENTIVE_CHECKLISTS[maintenanceType as MaintenanceType] || [];
+                             const checklist = checklistTemplate.map(item => ({ item, checked: false }));
+
                              const preventiveRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'> = {
-                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${lastCompletedRequest.maintenanceType}.`,
+                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${maintenanceType}.`,
                                 equipmentStatus: EquipmentStatus.OPERATIONAL,
                                 requester: SYSTEM_USER,
                                 requesterSector: lastCompletedRequest.requesterSector,
                                 equipment: [equipmentName],
-                                maintenanceType: lastCompletedRequest.maintenanceType,
+                                maintenanceType: maintenanceType,
                                 failureTime: new Date(),
                                 attachments: [],
                                 status: RequestStatus.PENDING_APPROVAL,
                                 isPreventive: true,
+                                checklist: checklist.length > 0 ? checklist : undefined,
                             };
                             await api.createRequest(preventiveRequestData);
                             triggeredEquipment.add(equipmentName);
