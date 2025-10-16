@@ -4,7 +4,7 @@ import { UserRole, RequestStatus } from '../types';
 import { getRequestById, updateRequestStatus, approvePreventiveRequest, updateRequest } from '../services/mockApiService';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
-import { PaperclipIcon, XIcon, CheckIcon, WrenchIcon } from '../components/icons';
+import { PaperclipIcon, XIcon, CheckIcon, WrenchIcon, ShieldCheckIcon } from '../components/icons';
 
 interface RequestDetailPageProps {
     requestId: string;
@@ -443,12 +443,18 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                 </div>
                 <div>
                     {isCompleted ? (
-                        <div className="flex items-center gap-x-3 bg-ticket-completed text-white px-4 sm:px-6 py-2 rounded-lg shadow-lg">
+                         <div className="flex items-center gap-x-3 bg-ticket-completed text-white px-4 sm:px-6 py-2 rounded-lg shadow-lg">
                             <CheckIcon className="h-6 w-6 sm:h-8 sm:w-8" />
                             <span className="text-xl sm:text-2xl font-bold">Concluída</span>
                         </div>
                     ) : (
                         <div className="flex items-center space-x-4">
+                             {isFinalized && request.approvedBy && (
+                                <span className="inline-flex items-center gap-x-1.5 px-3 py-1 text-sm font-medium rounded-full bg-purple-600 text-white">
+                                    <ShieldCheckIcon className="h-4 w-4" />
+                                    Origem Preventiva
+                                </span>
+                            )}
                             {!isCanceled && <PriorityBadge status={request.equipmentStatus} />}
                             <StatusBadge status={request.status} />
                         </div>

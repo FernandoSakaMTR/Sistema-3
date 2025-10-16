@@ -50,7 +50,7 @@ const RequestCard: React.FC<{
             <div className="flex flex-col items-start gap-y-2 sm:flex-row sm:items-start sm:justify-between sm:gap-y-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:min-w-0">
                     <StatusBadge status={request.status} />
-                    {isApprovedPreventive && isNew && (
+                    {isApprovedPreventive && (isNew || isCompleted) && (
                         <span className="inline-flex items-center gap-x-1.5 px-2 py-0.5 text-xs font-medium rounded-md bg-purple-600 text-white">
                             <ShieldCheckIcon className="h-3.5 w-3.5" />
                             Origem: Preventiva
