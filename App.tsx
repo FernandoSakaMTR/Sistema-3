@@ -49,10 +49,17 @@ const App: React.FC = () => {
     useEffect(() => {
         if (user) {
             fetchRequests(false); // Carga inicial
-            const defaultPage = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) ? 'dashboard' : 'my-requests';
+            let defaultPage: string;
+            if ([UserRole.MANAGER, UserRole.ADMIN].includes(user.role)) {
+                defaultPage = 'dashboard';
+            } else if (user.role === UserRole.MAINTENANCE) {
+                defaultPage = 'all-requests';
+            } else {
+                defaultPage = 'my-requests';
+            }
             setCurrentPage(defaultPage);
         }
-    }, [user]);
+    }, [user, fetchRequests]);
     
     // Efeito para polling de dados (atualização em tempo real)
     useEffect(() => {
