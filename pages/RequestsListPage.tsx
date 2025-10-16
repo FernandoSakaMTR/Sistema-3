@@ -33,6 +33,7 @@ const RequestCard: React.FC<{
     const isFinalized = isCompleted || isCanceled;
     const isNew = !request.status;
     const isApprovedPreventive = !!request.approvedBy;
+    const isNewForMaintenance = user?.role === UserRole.MAINTENANCE && isNew;
 
     const getCardBgColor = () => {
         if (isApprovedPreventive && isNew) return 'bg-purple-100';
@@ -92,7 +93,9 @@ const RequestCard: React.FC<{
                 </div>
             </div>
             <div className="mt-2">
-                <h3 className={`text-lg font-bold text-gray-800 break-words whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>{request.description}</h3>
+                <h3 className={`text-lg font-bold text-gray-800 break-words whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>
+                    {isNewForMaintenance ? 'Detalhes disponíveis ao iniciar o atendimento' : request.description}
+                </h3>
                 <p className="text-sm text-gray-500 mt-3 break-words">Solicitante: {request.requester.name}</p>
             </div>
             <div className="border-t my-4"></div>

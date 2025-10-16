@@ -1,5 +1,3 @@
-
-
 import type { MaintenanceRequest, User } from '../types';
 import { RequestStatus, UserRole } from '../types';
 import { USERS as initialUsers, MOCK_REQUESTS as initialRequests } from '../constants';
@@ -198,7 +196,7 @@ export const updateRequestStatus = async (
     return updatedRequest;
 };
 
-export const approvePreventiveRequest = async (requestId: string, approverName: string): Promise<MaintenanceRequest> => {
+export const approvePreventiveRequest = async (requestId: string, approverName: string, approverUser: User): Promise<MaintenanceRequest> => {
     await delay(600);
     const requestIndex = requests.findIndex(r => r.id === requestId);
     if (requestIndex === -1) {
@@ -211,6 +209,7 @@ export const approvePreventiveRequest = async (requestId: string, approverName: 
 
     const updatedRequest: MaintenanceRequest = {
         ...originalRequest,
+        requester: { ...approverUser, name: approverName }, // Altera o solicitante para quem aprovou, usando o nome digitado no formulário.
         status: undefined, // Torna-se um pedido "Novo"
         isPreventive: false, // Converte para um pedido normal
         updatedAt: new Date(),

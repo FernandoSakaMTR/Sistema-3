@@ -255,7 +255,7 @@ const App: React.FC = () => {
                 if (user) return <PreventiveRequestsPage user={user} requests={requests} onEditRequest={handleEditRequest} onRequestUpdate={fetchRequests} onSelectRequest={handleSelectRequest} />;
                 return null;
             case 'all-requests':
-                return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} />;
+                return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} user={user} />;
             case 'my-requests':
                 const myRequests = requests.filter(r => r.requester.id === user?.id && !r.isPreventive);
                 return <RequestsListPage 

@@ -199,7 +199,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         }
         setIsSubmitting(true);
         try {
-            await approvePreventiveRequest(requestId, approverName);
+            await approvePreventiveRequest(requestId, approverName, user);
             await onRequestUpdate();
             alert('Pedido preventivo aprovado com sucesso!');
             onBack('preventive-requests');
@@ -244,6 +244,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         return <div className="p-8">Pedido não encontrado.</div>;
     }
 
+    const isNewRequestForMaintenance = user.role === UserRole.MAINTENANCE && request && !request.status;
     const canTakeAction = [UserRole.MAINTENANCE, UserRole.ADMIN].includes(user.role);
     const isOwner = user.id === request.requester.id;
     const isEditable = !request.status;
@@ -464,154 +465,175 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <DetailItem label="Tipo" value={request.maintenanceType} />
                     <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
                 </div>
-
-                {/* Description Section */}
-                <div className="border-t pt-8">
-                    <h2 className="text-sm font-medium text-gray-500 mb-2">O que está ocorrendo?</h2>
-                    <p className={`text-xl text-gray-800 whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>
-                        {request.description}
-                    </p>
-                </div>
                 
-                {/* Checklist Section */}
-                {shouldDisplayChecklist && (
-                    <div className="border-t pt-8">
-                        <div className={`p-6 rounded-lg ${getChecklistContainerClass()}`}>
-                            <h2 className={`text-xl font-bold flex items-center mb-4 ${getChecklistTitleClass()}`}>
+                {isNewRequestForMaintenance ? (
+                    <div className="border-t pt-8 text-center">
+                        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                            <h2 className="text-xl font-bold text-brand-blue mb-4 flex items-center justify-center">
                                 <WrenchIcon className="h-6 w-6 mr-3" />
-                                Checklist de Verificação Preventiva
+                                Pronto para começar?
                             </h2>
-                            {isPendingPreventive && <p className="text-sm text-purple-700 mb-4">Este é o checklist que a equipe de manutenção deverá seguir após a aprovação.</p>}
-                            {request.status === RequestStatus.IN_PROGRESS && <p className="text-sm text-yellow-700 mb-4">Este checklist deve ser preenchido ao concluir o atendimento.</p>}
-                             {isCompleted && <p className="text-sm text-green-700 mb-4">Checklist preenchido na conclusão do serviço.</p>}
-                            <div className="space-y-3">
-                                {checklist.map((item, index) => (
-                                    <label key={index} className={`flex items-center p-2 rounded-md transition-colors`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={item.checked}
-                                            disabled
-                                            className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
-                                        />
-                                        <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
-                                    </label>
-                                ))}
-                            </div>
+                            <p className="text-gray-600 mb-6 max-w-xl mx-auto">
+                                Para visualizar os detalhes e anexos, você precisa primeiro iniciar o atendimento. Isso formaliza o começo do trabalho e garante que o tempo de atendimento seja registrado corretamente.
+                            </p>
+                            <button 
+                                onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} 
+                                className="bg-brand-blue text-white px-8 py-3 rounded-lg hover:bg-brand-blue-dark transition-colors shadow-lg text-lg font-semibold flex items-center justify-center mx-auto"
+                            >
+                                Iniciar Atendimento
+                            </button>
                         </div>
                     </div>
-                )}
-
-
-                {/* Attachments and Maintenance Section */}
-                <div className="border-t pt-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
-                        {/* Attachments */}
-                        <div className={`${isFinalized ? 'lg:col-span-3' : 'lg:col-span-5'} space-y-6`}>
-                            <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Anexos</h2>
-                            <DetailItem label="">
-                                {request.attachments && request.attachments.length > 0 ? (
-                                    <ul className="space-y-2 border border-gray-200 rounded-md p-3">
-                                        {request.attachments.map((file, index) => (
-                                            <li key={index}>
-                                                <a 
-                                                    href={attachmentUrls[index]} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
-                                                >
-                                                    <PaperclipIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                                                    <span className="truncate">{file.name}</span>
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p className="text-gray-500 text-sm">Nenhum anexo foi adicionado.</p>
-                                )}
-                            </DetailItem>
-                            {isCanceled && request.cancelReason && (
-                               <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
-                            )}
+                ) : (
+                    <>
+                        {/* Description Section */}
+                        <div className="border-t pt-8">
+                            <h2 className="text-sm font-medium text-gray-500 mb-2">O que está ocorrendo?</h2>
+                            <p className={`text-xl text-gray-800 whitespace-pre-wrap ${isCanceled ? 'line-through text-gray-500 decoration-2' : ''}`}>
+                                {request.description}
+                            </p>
                         </div>
 
-                        {/* Maintenance Details (Conditional) */}
-                        {isFinalized && (
-                            <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
-                                <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
-                                {request.approvedBy && <DetailItem label="Aprovado por" value={request.approvedBy} />}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                                    <DetailItem label="Iniciado por" value={request.assignedTo} />
-                                    <DetailItem label="Finalizado por" value={request.completedBy} />
-                                    <DetailItem label="Início" value={formatDate(request.startedAt)} />
-                                    <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
-                                </div>
-                                {isManagerOrAdmin && waitingTime && (
-                                    <div className="pt-2">
-                                        <DetailItem label="Aguardo no Atendimento" value={waitingTime} />
+                         {/* Checklist Section */}
+                        {shouldDisplayChecklist && (
+                            <div className="border-t pt-8">
+                                <div className={`p-6 rounded-lg ${getChecklistContainerClass()}`}>
+                                    <h2 className={`text-xl font-bold flex items-center mb-4 ${getChecklistTitleClass()}`}>
+                                        <WrenchIcon className="h-6 w-6 mr-3" />
+                                        Checklist de Verificação Preventiva
+                                    </h2>
+                                    {isPendingPreventive && <p className="text-sm text-purple-700 mb-4">Este é o checklist que a equipe de manutenção deverá seguir após a aprovação.</p>}
+                                    {request.status === RequestStatus.IN_PROGRESS && <p className="text-sm text-yellow-700 mb-4">Este checklist deve ser preenchido ao concluir o atendimento.</p>}
+                                     {isCompleted && <p className="text-sm text-green-700 mb-4">Checklist preenchido na conclusão do serviço.</p>}
+                                    <div className="space-y-3">
+                                        {checklist.map((item, index) => (
+                                            <label key={index} className={`flex items-center p-2 rounded-md transition-colors`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={item.checked}
+                                                    disabled
+                                                    className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
+                                                />
+                                                <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
+                                            </label>
+                                        ))}
                                     </div>
-                                )}
-                                {isManagerOrAdmin && totalRepairTime && (
-                                    <div className="pt-2">
-                                        <DetailItem label="Tempo Total de Reparo" value={totalRepairTime} />
-                                    </div>
-                                )}
-                                <div className="pt-2">
-                                    <DetailItem label="Notas da Manutenção">
-                                        <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
-                                    </DetailItem>
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
 
-                {/* --- ACTION BUTTONS --- */}
-                {canManagePreventive ? (
-                     <div className="border-t pt-8">
-                        <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações da Preventiva</h3>
-                        <div className="flex flex-wrap gap-4">
-                             <button onClick={() => setApprovalModalOpen(true)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
-                                Aprovar
-                            </button>
-                            <button onClick={() => setRejectionModalOpen(true)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
-                                Rejeitar
-                            </button>
-                             <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors shadow-md">Editar</button>
-                        </div>
-                    </div>
-                ) : canPerformAnyAction ? (
-                    <div className="border-t pt-8">
-                        <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações Disponíveis</h3>
-                        <div className="flex flex-wrap gap-4">
-                            {canTakeAction && (
-                                <>
-                                    {request.status === undefined && (
-                                        <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors shadow-md">
-                                            Iniciar Atendimento
-                                        </button>
-                                    )}
-                                    {request.status === RequestStatus.IN_PROGRESS && (
-                                        <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
-                                            Concluir
-                                        </button>
-                                    )}
-                                    {(request.status === undefined || request.status === RequestStatus.IN_PROGRESS) && (
-                                        <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
-                                            Cancelar
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                            {canEditRequest && (
-                                <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800">Editar Pedido</button>
-                            )}
-                            {canDeleteRequestAsRequester && (
-                                <button onClick={() => onDeleteRequest(request.id)} className="bg-red-700 text-white px-4 py-2 rounded-md hover:bg-red-800">Excluir Pedido</button>
-                            )}
-                        </div>
-                    </div>
-                ) : null}
 
+                        {/* Attachments and Maintenance Section */}
+                        <div className="border-t pt-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+                                {/* Attachments */}
+                                <div className={`${isFinalized ? 'lg:col-span-3' : 'lg:col-span-5'} space-y-6`}>
+                                    <h2 className="text-xl font-bold text-brand-blue border-b pb-2">Anexos</h2>
+                                    <DetailItem label="">
+                                        {request.attachments && request.attachments.length > 0 ? (
+                                            <ul className="space-y-2 border border-gray-200 rounded-md p-3">
+                                                {request.attachments.map((file, index) => (
+                                                    <li key={index}>
+                                                        <a 
+                                                            href={attachmentUrls[index]} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                        >
+                                                            <PaperclipIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                            <span className="truncate">{file.name}</span>
+                                                        </a>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-gray-500 text-sm">Nenhum anexo foi adicionado.</p>
+                                        )}
+                                    </DetailItem>
+                                    {isCanceled && request.cancelReason && (
+                                       <ReasonBox title="Motivo do Cancelamento" reason={request.cancelReason} color="red" />
+                                    )}
+                                </div>
+
+                                {/* Maintenance Details (Conditional) */}
+                                {isFinalized && (
+                                    <div className="lg:col-span-2 space-y-4 bg-slate-100 p-6 rounded-lg h-fit">
+                                        <h2 className="text-xl font-bold text-brand-blue border-b pb-2 mb-4">Manutenção</h2>
+                                        {request.approvedBy && <DetailItem label="Aprovado por" value={request.approvedBy} />}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <DetailItem label="Iniciado por" value={request.assignedTo} />
+                                            <DetailItem label="Finalizado por" value={request.completedBy} />
+                                            <DetailItem label="Início" value={formatDate(request.startedAt)} />
+                                            <DetailItem label="Conclusão" value={formatDate(request.completedAt)} />
+                                        </div>
+                                        {isManagerOrAdmin && waitingTime && (
+                                            <div className="pt-2">
+                                                <DetailItem label="Aguardo no Atendimento" value={waitingTime} />
+                                            </div>
+                                        )}
+                                        {isManagerOrAdmin && totalRepairTime && (
+                                            <div className="pt-2">
+                                                <DetailItem label="Tempo Total de Reparo" value={totalRepairTime} />
+                                            </div>
+                                        )}
+                                        <div className="pt-2">
+                                            <DetailItem label="Notas da Manutenção">
+                                                <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
+                                            </DetailItem>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* --- ACTION BUTTONS --- */}
+                        {canManagePreventive ? (
+                             <div className="border-t pt-8">
+                                <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações da Preventiva</h3>
+                                <div className="flex flex-wrap gap-4">
+                                     <button onClick={() => setApprovalModalOpen(true)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
+                                        Aprovar
+                                    </button>
+                                    <button onClick={() => setRejectionModalOpen(true)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
+                                        Rejeitar
+                                    </button>
+                                     <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors shadow-md">Editar</button>
+                                </div>
+                            </div>
+                        ) : canPerformAnyAction ? (
+                            <div className="border-t pt-8">
+                                <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações Disponíveis</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {canTakeAction && (
+                                        <>
+                                            {request.status === undefined && (
+                                                <button onClick={() => handleActionSelect(RequestStatus.IN_PROGRESS)} className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors shadow-md">
+                                                    Iniciar Atendimento
+                                                </button>
+                                            )}
+                                            {request.status === RequestStatus.IN_PROGRESS && (
+                                                <button onClick={() => handleActionSelect(RequestStatus.COMPLETED)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
+                                                    Concluir
+                                                </button>
+                                            )}
+                                            {(request.status === undefined || request.status === RequestStatus.IN_PROGRESS) && (
+                                                <button onClick={() => handleActionSelect(RequestStatus.CANCELED)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
+                                                    Cancelar
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                    {canEditRequest && (
+                                        <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800">Editar Pedido</button>
+                                    )}
+                                    {canDeleteRequestAsRequester && (
+                                        <button onClick={() => onDeleteRequest(request.id)} className="bg-red-700 text-white px-4 py-2 rounded-md hover:bg-red-800">Excluir Pedido</button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : null}
+                    </>
+                )}
             </div>
         </div>
     );
