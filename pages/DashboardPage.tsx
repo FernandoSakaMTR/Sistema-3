@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { MaintenanceRequest } from '../types';
 import { RequestStatus, EquipmentStatus } from '../types';
@@ -15,14 +14,8 @@ interface EquipmentMetric {
   preventiveAlert?: string;
 }
 
-// Lógica de Negócio para Manutenção Preventiva
-const PREVENTIVE_MAINTENANCE_CYCLE_HOURS = 300;
-const PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE = 0.85;
-const PREVENTIVE_THRESHOLD_MS = PREVENTIVE_MAINTENANCE_CYCLE_HOURS * PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE * 60 * 60 * 1000;
-
 interface DashboardPageProps {
     requests: MaintenanceRequest[];
-    onTriggerPreventiveRequest: (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'requester' | 'status' | 'isPreventive' >) => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
@@ -65,7 +58,7 @@ const SortableTableHeader: React.FC<{
 };
 
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ requests, onTriggerPreventiveRequest }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ requests }) => {
     const [equipmentMetrics, setEquipmentMetrics] = useState<EquipmentMetric[]>([]);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -116,34 +109,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests, onTriggerPreven
                     const mtbfMs = failureCount > 0 ? uptimeMs / failureCount : uptimeMs;
                     const mtbfHours = mtbfMs / (1000 * 60 * 60);
                     
-                    // Lógica de Manutenção Preventiva
+                    // Lógica para AVISO de Manutenção Preventiva
                     let preventiveAlert: string | undefined = undefined;
-                    const lastCompletedRequest = eqRequests
-                        .filter(r => r.status === RequestStatus.COMPLETED && r.completedAt)
-                        .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime())[0];
-                    
-                    if (lastCompletedRequest && uptimeMs >= PREVENTIVE_THRESHOLD_MS) {
-                        preventiveAlert = `Preventiva Recomendada (${lastCompletedRequest.maintenanceType})`;
+                    const isPending = requests.some(r =>
+                        r.equipment.includes(equipmentName) &&
+                        r.isPreventive &&
+                        r.status === RequestStatus.PENDING_APPROVAL
+                    );
 
-                        const isPending = requests.some(r =>
-                            r.equipment.includes(equipmentName) &&
-                            r.isPreventive &&
-                            (r.status === RequestStatus.PENDING_APPROVAL || r.status === undefined)
-                        );
-
-                        if (!isPending) {
-                            onTriggerPreventiveRequest({
-                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${lastCompletedRequest.maintenanceType}.`,
-                                equipmentStatus: EquipmentStatus.OPERATIONAL,
-                                requesterSector: sector,
-                                equipment: [equipmentName],
-                                maintenanceType: lastCompletedRequest.maintenanceType,
-                                failureTime: new Date(),
-                                attachments: [],
-                            });
-                        }
+                    if (isPending) {
+                         preventiveAlert = `Preventiva Pendente de Aprovação`;
                     }
-
+                    
                     metrics.push({
                         equipmentName,
                         sector,
@@ -164,7 +141,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ requests, onTriggerPreven
         };
 
         calculateMetrics();
-    }, [requests, onTriggerPreventiveRequest]);
+    }, [requests]);
 
     const sortedAndFilteredMetrics = useMemo(() => {
         let filtered = [...equipmentMetrics];

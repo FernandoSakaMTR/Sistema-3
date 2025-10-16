@@ -1,10 +1,7 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
-// FIX: Import RequestStatus as a value to use its members.
 import type { MaintenanceRequest, User } from '../types';
 import { UserRole, RequestStatus } from '../types';
-import { getRequestById, updateRequestStatus } from '../services/mockApiService';
+import { getRequestById, updateRequestStatus, approvePreventiveRequest } from '../services/mockApiService';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
 import { PaperclipIcon, XIcon, CheckIcon } from '../components/icons';
@@ -12,7 +9,7 @@ import { PaperclipIcon, XIcon, CheckIcon } from '../components/icons';
 interface RequestDetailPageProps {
     requestId: string;
     user: User;
-    onBack: () => void;
+    onBack: (targetPage?: string) => void;
     onDeleteRequest: (id: string) => void;
     onEditRequest: (id: string) => void;
     onRequestUpdate: () => Promise<void>;
@@ -98,13 +95,21 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [request, setRequest] = useState<MaintenanceRequest | null>(null);
     const [loading, setLoading] = useState(true);
     const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    // State for standard actions
+    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [currentAction, setCurrentAction] = useState<RequestStatus | null>(null);
-    const [reason, setReason] = useState('');
+    const [actionReason, setActionReason] = useState('');
     const [assigneeName, setAssigneeName] = useState('');
     const [completerName, setCompleterName] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // State for preventive actions
+    const [isApprovalModalOpen, setApprovalModalOpen] = useState(false);
+    const [isRejectionModalOpen, setRejectionModalOpen] = useState(false);
+    const [approverName, setApproverName] = useState('');
+    const [rejectionReason, setRejectionReason] = useState('');
+
 
     const fetchRequest = useCallback(async () => {
         setLoading(true);
@@ -133,30 +138,29 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const handleActionSelect = (action: RequestStatus) => {
         setCurrentAction(action);
-        setReason('');
+        setActionReason('');
         setAssigneeName('');
         setCompleterName('');
-        setIsModalOpen(true);
+        setIsActionModalOpen(true);
     };
-
-    const handleCloseModal = () => {
+    
+    const handleCloseActionModal = () => {
         if (isSubmitting) return;
-        setIsModalOpen(false);
+        setIsActionModalOpen(false);
         setCurrentAction(null);
     };
 
     const handleConfirmAction = async () => {
         if (!currentAction) return;
-
         setIsSubmitting(true);
         try {
             await updateRequestStatus(requestId, currentAction, { 
-                reason, 
+                reason: actionReason, 
                 assigneeName, 
                 completerName 
             });
             await Promise.all([fetchRequest(), onRequestUpdate()]);
-            handleCloseModal();
+            handleCloseActionModal();
         } catch (error) {
             console.error("Failed to update status:", error);
             alert("Não foi possível atualizar o status do pedido.");
@@ -164,6 +168,46 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             setIsSubmitting(false);
         }
     };
+    
+    // --- Preventive Action Handlers ---
+    const handleConfirmApproval = async () => {
+        if (!approverName.trim()) {
+            alert('O nome do aprovador é obrigatório.');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await approvePreventiveRequest(requestId, approverName);
+            await onRequestUpdate();
+            alert('Pedido preventivo aprovado com sucesso!');
+            onBack('preventive-requests');
+        } catch (error: any) {
+            console.error("Failed to approve request:", error);
+            alert(error.message || "Não foi possível aprovar o pedido.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleConfirmRejection = async () => {
+        if (!rejectionReason.trim()) {
+            alert('Por favor, forneça um motivo para a rejeição.');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await updateRequestStatus(requestId, RequestStatus.CANCELED, { reason: rejectionReason });
+            await onRequestUpdate();
+            alert('Pedido preventivo rejeitado com sucesso.');
+            onBack('preventive-requests');
+        } catch (error: any) {
+            console.error("Failed to reject request:", error);
+            alert(error.message || "Não foi possível rejeitar o pedido.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
     if (loading) {
         return <div className="p-8">Carregando detalhes do pedido...</div>;
@@ -182,7 +226,10 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     
     const canEditRequest = isOwner && isEditable;
     const canDeleteRequestAsRequester = isOwner && isEditable && user.role !== UserRole.MAINTENANCE && user.role !== UserRole.ADMIN;
-    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isCompleted && !isCanceled;
+    const isPendingPreventive = request.isPreventive && request.status === RequestStatus.PENDING_APPROVAL;
+    const canManagePreventive = [UserRole.MANAGER, UserRole.ADMIN].includes(user.role) && isPendingPreventive;
+
+    const canPerformAnyAction = (canTakeAction || canEditRequest || canDeleteRequestAsRequester) && !isFinalized;
 
     const checkConfirmDisabled = () => {
         if (isSubmitting) return true;
@@ -190,9 +237,9 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             case RequestStatus.IN_PROGRESS:
                 return !assigneeName.trim();
             case RequestStatus.COMPLETED:
-                return !reason.trim() || !completerName.trim();
+                return !actionReason.trim() || !completerName.trim();
             case RequestStatus.CANCELED:
-                return !reason.trim();
+                return !actionReason.trim();
             default:
                 return true;
         }
@@ -215,7 +262,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="maintenanceNotes" className="block text-sm font-medium text-gray-700">O que foi feito?*</label>
-                            <textarea id="maintenanceNotes" value={reason} onChange={e => setReason(e.target.value)} rows={4}
+                            <textarea id="maintenanceNotes" value={actionReason} onChange={e => setActionReason(e.target.value)} rows={4}
                                       className={baseInputStyle} placeholder="Descreva o serviço realizado..."></textarea>
                         </div>
                         <div>
@@ -229,7 +276,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                 return (
                     <div>
                         <label htmlFor="cancelReason" className="block text-sm font-medium text-gray-700">Motivo do Cancelamento*</label>
-                        <textarea id="cancelReason" value={reason} onChange={(e) => setReason(e.target.value)}
+                        <textarea id="cancelReason" value={actionReason} onChange={(e) => setActionReason(e.target.value)}
                                   placeholder="Por favor, descreva o motivo do cancelamento..." rows={4} className={baseInputStyle} />
                     </div>
                 );
@@ -255,27 +302,70 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     return (
         <div className="p-8">
+            {/* Modal for Standard Actions */}
             <ActionModal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
+                isOpen={isActionModalOpen}
+                onClose={handleCloseActionModal}
                 title={getModalTitle()}
             >
                 <div className="space-y-6">
                     {getModalContent()}
                     <div className="flex justify-end pt-4 space-x-3">
-                        <button 
-                            type="button" 
-                            onClick={handleCloseModal}
-                            disabled={isSubmitting}
-                            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <button type="button" onClick={handleCloseActionModal} disabled={isSubmitting} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Cancelar
                         </button>
-                        <button 
-                            type="button" 
-                            onClick={handleConfirmAction} 
-                            disabled={isConfirmDisabled}
-                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        <button type="button" onClick={handleConfirmAction} disabled={isConfirmDisabled} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-blue hover:bg-brand-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-light disabled:bg-gray-400 disabled:cursor-not-allowed">
                             {isSubmitting ? 'Confirmando...' : 'Confirmar'}
+                        </button>
+                    </div>
+                </div>
+            </ActionModal>
+            
+            {/* Modal for Preventive Approval */}
+            <ActionModal
+                isOpen={isApprovalModalOpen}
+                onClose={() => setApprovalModalOpen(false)}
+                title="Aprovar Pedido Preventivo"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600">Ao aprovar, este pedido será convertido em uma ordem de serviço e movido para a lista de "Novos Pedidos".</p>
+                    <div>
+                        <label htmlFor="approverName" className="block text-base font-semibold text-gray-800">Seu Nome*</label>
+                        <input
+                            id="approverName"
+                            value={approverName}
+                            onChange={(e) => setApproverName(e.target.value)}
+                            type="text"
+                            className="mt-2 block w-full rounded-lg border-2 border-gray-300 shadow-sm p-3 text-lg bg-gray-50 focus:border-brand-blue focus:ring focus:ring-brand-blue-light focus:ring-opacity-50 transition-colors duration-200"
+                            placeholder="Digite seu nome completo aqui"
+                        />
+                    </div>
+                    <div className="flex justify-end pt-2 space-x-3">
+                        <button type="button" onClick={() => setApprovalModalOpen(false)} disabled={isSubmitting} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onClick={handleConfirmApproval} disabled={isSubmitting || !approverName.trim()} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400">
+                            {isSubmitting ? 'Aprovando...' : 'Confirmar Aprovação'}
+                        </button>
+                    </div>
+                </div>
+            </ActionModal>
+
+            {/* Modal for Preventive Rejection */}
+             <ActionModal
+                isOpen={isRejectionModalOpen}
+                onClose={() => setRejectionModalOpen(false)}
+                title="Rejeitar Pedido Preventivo"
+            >
+                <div className="space-y-4">
+                    <label htmlFor="rejectionReason" className="block text-sm font-medium text-gray-700">Motivo da Rejeição*</label>
+                    <textarea id="rejectionReason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} rows={4} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Descreva por que este pedido está sendo rejeitado..." />
+                    <div className="flex justify-end pt-2 space-x-3">
+                        <button type="button" onClick={() => setRejectionModalOpen(false)} disabled={isSubmitting} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onClick={handleConfirmRejection} disabled={isSubmitting || !rejectionReason.trim()} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400">
+                            {isSubmitting ? 'Rejeitando...' : 'Confirmar Rejeição'}
                         </button>
                     </div>
                 </div>
@@ -283,7 +373,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                  <div>
-                    <button onClick={onBack} className="text-brand-blue hover:underline mb-2">&larr; Voltar para a lista</button>
+                    <button onClick={() => onBack()} className="text-brand-blue hover:underline mb-2">&larr; Voltar para a lista</button>
                     <h1 className="text-3xl font-bold text-gray-800">
                        Detalhes do Pedido <span className="text-gray-500 font-medium">{request.id}</span>
                     </h1>
@@ -384,7 +474,21 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     </div>
                 </div>
 
-                {canPerformAnyAction && (
+                {/* --- ACTION BUTTONS --- */}
+                {canManagePreventive ? (
+                     <div className="border-t pt-8">
+                        <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações da Preventiva</h3>
+                        <div className="flex flex-wrap gap-4">
+                             <button onClick={() => setApprovalModalOpen(true)} className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors shadow-md">
+                                Aprovar
+                            </button>
+                            <button onClick={() => setRejectionModalOpen(true)} className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md">
+                                Rejeitar
+                            </button>
+                             <button onClick={() => onEditRequest(request.id)} className="bg-gray-700 text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors shadow-md">Editar</button>
+                        </div>
+                    </div>
+                ) : canPerformAnyAction ? (
                     <div className="border-t pt-8">
                         <h3 className="text-lg font-semibold text-gray-700 w-full mb-4">Ações Disponíveis</h3>
                         <div className="flex flex-wrap gap-4">
@@ -415,7 +519,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                             )}
                         </div>
                     </div>
-                )}
+                ) : null}
+
             </div>
         </div>
     );

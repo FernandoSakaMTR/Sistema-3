@@ -1,10 +1,9 @@
-
 import { User, MaintenanceRequest, UserRole, RequestStatus, MaintenanceType, EquipmentStatus } from './types';
 import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon, CogIcon } from '../components/icons';
 import React from 'react';
 
 
-export const SECTORS: string[] = ['PRENSA', 'ROSCA', 'FORNO', 'FRESA/FENDA', 'OUTRO'];
+export const SECTORS: string[] = ['Prensa', 'Rosca', 'Forno', 'Fresa/Fenda', 'Outro'];
 
 export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>>> = {
   [UserRole.ADMIN]: ShieldCheckIcon,
@@ -25,9 +24,7 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
 // High priority colors for badges
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, string> = {
   [EquipmentStatus.OPERATIONAL]: 'bg-machine-ok text-white',
-  // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.PARTIAL]: 'bg-machine-partial text-black',
-  // FIX: Used correct enum `EquipmentStatus` instead of `RequestStatus`.
   [EquipmentStatus.INOPERATIVE]: 'bg-machine-down text-white'
 };
 

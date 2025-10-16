@@ -26,13 +26,21 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
     
     const [requesterName, setRequesterName] = useState('');
     const [description, setDescription] = useState('');
-    const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PARTIAL);
+    const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus | ''>('');
     const [equipment, setEquipment] = useState('');
     const [requesterSector, setRequesterSector] = useState('');
-    const [maintenanceType, setMaintenanceType] = useState<MaintenanceType>(MaintenanceType.MECHANICAL);
+    const [maintenanceType, setMaintenanceType] = useState<MaintenanceType | ''>('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [failureTime, setFailureTime] = useState('');
-    const [errors, setErrors] = useState<{ equipment?: string, description?: string, requesterName?: string, requesterSector?: string, failureTime?: string }>({});
+    const [errors, setErrors] = useState<{ 
+        equipment?: string, 
+        description?: string, 
+        requesterName?: string, 
+        requesterSector?: string, 
+        failureTime?: string,
+        maintenanceType?: string,
+        equipmentStatus?: string
+    }>({});
     
     useEffect(() => {
         if (isEditing && requestToEdit) {
@@ -48,12 +56,12 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             // Limpa o formulário para um novo pedido
             setRequesterName('');
             setDescription('');
-            setEquipmentStatus(EquipmentStatus.PARTIAL);
+            setEquipmentStatus('');
             setEquipment('');
-            setMaintenanceType(MaintenanceType.MECHANICAL);
+            setMaintenanceType('');
             setAttachments([]);
             setErrors({});
-            setRequesterSector(SECTORS.includes(user.sector) ? user.sector : SECTORS[0]);
+            setRequesterSector('');
             setFailureTime(formatDateForInput(new Date())); // Default para agora
         }
     }, [isEditing, requestToEdit, user.sector]);
@@ -65,6 +73,8 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         if (!requesterSector) newErrors.requesterSector = 'Por favor, selecione um setor.';
         if (!description.trim()) newErrors.description = 'O campo de descrição é obrigatório.';
         if (!failureTime) newErrors.failureTime = 'A data e hora da falha são obrigatórias.';
+        if (!maintenanceType) newErrors.maintenanceType = 'Por favor, selecione o tipo de manutenção.';
+        if (!equipmentStatus) newErrors.equipmentStatus = 'Por favor, selecione o status do equipamento.';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -79,11 +89,11 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         
         const newRequestData = {
             description,
-            equipmentStatus,
+            equipmentStatus: equipmentStatus as EquipmentStatus,
             requester: { ...user, name: requesterName.trim() },
             requesterSector,
             equipment: equipment.split(',').map(item => item.trim()),
-            maintenanceType,
+            maintenanceType: maintenanceType as MaintenanceType,
             attachments,
             failureTime: new Date(failureTime),
         };
@@ -119,6 +129,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                         <label htmlFor="requesterSector" className="block text-sm font-medium text-gray-700">Setor*</label>
                         <select id="requesterSector" value={requesterSector} onChange={e => setRequesterSector(e.target.value)}
                             className={`${normalInputStyle} ${errors.requesterSector ? 'border-red-500' : ''}`}>
+                            <option value="" disabled>Selecione o setor</option>
                             {SECTORS.map(sector => <option key={sector} value={sector}>{sector}</option>)}
                         </select>
                         {errors.requesterSector && <p className="mt-1 text-sm text-red-600">{errors.requesterSector}</p>}
@@ -126,7 +137,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                     <div>
                         <label htmlFor="equipment" className="block text-sm font-medium text-gray-700">Equipamento*</label>
                         <input type="text" id="equipment" list="equipment-numbers" value={equipment} onChange={e => setEquipment(e.target.value)} 
-                            className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} placeholder="Selecione ou digite o nome" />
+                            className={`${normalInputStyle} ${errors.equipment ? 'border-red-500' : ''}`} placeholder="Digite ou selecione o nome" />
                         <datalist id="equipment-numbers">{Array.from({ length: 50 }, (_, i) => i + 1).map(num => <option key={num} value={`Equipamento ${String(num)}`} />)}</datalist>
                         {errors.equipment && <p className="mt-1 text-sm text-red-600">{errors.equipment}</p>}
                     </div>
@@ -141,16 +152,20 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="maintenanceType" className="block text-sm font-medium text-gray-700">Tipo de Manutenção*</label>
-                        <select id="maintenanceType" value={maintenanceType} onChange={e => setMaintenanceType(e.target.value as MaintenanceType)} className={normalInputStyle}>
+                        <select id="maintenanceType" value={maintenanceType} onChange={e => setMaintenanceType(e.target.value as MaintenanceType)} className={`${normalInputStyle} ${errors.maintenanceType ? 'border-red-500' : ''}`}>
+                            <option value="" disabled>Selecione o tipo</option>
                             {Object.values(MaintenanceType).map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
+                        {errors.maintenanceType && <p className="mt-1 text-sm text-red-600">{errors.maintenanceType}</p>}
                     </div>
                     <div>
                         <label htmlFor="equipmentStatus" className="block text-sm font-medium text-gray-700">Status do Equipamento*</label>
                         <select id="equipmentStatus" value={equipmentStatus} onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
-                            className={`${baseInputStyle} font-bold ${EQUIPMENT_STATUS_BG_COLORS[equipmentStatus]} text-black`}>
+                            className={`${baseInputStyle} font-bold ${equipmentStatus ? EQUIPMENT_STATUS_BG_COLORS[equipmentStatus] : 'bg-gray-100 border-gray-300'} text-black ${errors.equipmentStatus ? 'border-red-500' : ''}`}>
+                            <option value="" disabled>Selecione o status</option>
                             {Object.values(EquipmentStatus).map(s => <option key={s} value={s} className="text-black font-normal bg-white">{s}</option>)}
                         </select>
+                        {errors.equipmentStatus && <p className="mt-1 text-sm text-red-600">{errors.equipmentStatus}</p>}
                     </div>
                 </div>
 

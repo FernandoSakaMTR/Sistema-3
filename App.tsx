@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User, MaintenanceRequest } from './types';
-import { UserRole, RequestStatus } from './types';
+import { UserRole, RequestStatus, EquipmentStatus } from './types';
 import LoginPage from './pages/LoginPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -13,7 +13,13 @@ import UserManagementPage from './pages/UserManagementPage';
 import MyProfilePage from './pages/MyProfilePage';
 import PreventiveRequestsPage from './pages/PreventiveRequestsPage';
 import * as api from './services/mockApiService';
+import { getOperationalData } from './services/operationalDataService';
 import { SYSTEM_USER } from './constants';
+
+const PREVENTIVE_MAINTENANCE_CYCLE_HOURS = 300;
+const PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE = 0.85;
+const PREVENTIVE_THRESHOLD_MS = PREVENTIVE_MAINTENANCE_CYCLE_HOURS * PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE * 60 * 60 * 1000;
+
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -59,6 +65,73 @@ const App: React.FC = () => {
         }
     }, [user, fetchRequests]);
 
+    // Efeito centralizado para criar pedidos preventivos
+    useEffect(() => {
+        const checkAndCreatePreventives = async () => {
+            if (requests.length === 0) return;
+
+            try {
+                const operationalData = await getOperationalData();
+                const requestsByEquipment: Record<string, MaintenanceRequest[]> = {};
+                 for (const req of requests) {
+                    for (const eq of req.equipment) {
+                        if (!requestsByEquipment[eq]) requestsByEquipment[eq] = [];
+                        requestsByEquipment[eq].push(req);
+                    }
+                }
+
+                const triggeredEquipment = new Set<string>();
+
+                for (const equipmentName in requestsByEquipment) {
+                    if (triggeredEquipment.has(equipmentName)) continue;
+
+                    const eqRequests = requestsByEquipment[equipmentName];
+                    const uptimeMs = operationalData[equipmentName]?.totalOperationalTimeMs || 0;
+
+                    const lastCompletedRequest = eqRequests
+                        .filter(r => r.status === RequestStatus.COMPLETED && r.completedAt)
+                        .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime())[0];
+                    
+                    if (lastCompletedRequest && uptimeMs >= PREVENTIVE_THRESHOLD_MS) {
+                        const hasActiveWorkOrder = requests.some(r =>
+                            r.equipment.includes(equipmentName) && (
+                                (r.isPreventive && r.status === RequestStatus.PENDING_APPROVAL) || // Is a pending preventive
+                                !r.status || // Is a "New" request (could be a just-approved preventive)
+                                r.status === RequestStatus.IN_PROGRESS // Is in progress
+                            )
+                        );
+                        
+                        if (!hasActiveWorkOrder) {
+                             const preventiveRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'> = {
+                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${lastCompletedRequest.maintenanceType}.`,
+                                equipmentStatus: EquipmentStatus.OPERATIONAL,
+                                requester: SYSTEM_USER,
+                                requesterSector: lastCompletedRequest.requesterSector,
+                                equipment: [equipmentName],
+                                maintenanceType: lastCompletedRequest.maintenanceType,
+                                failureTime: new Date(),
+                                attachments: [],
+                                status: RequestStatus.PENDING_APPROVAL,
+                                isPreventive: true,
+                            };
+                            await api.createRequest(preventiveRequestData);
+                            triggeredEquipment.add(equipmentName);
+                        }
+                    }
+                }
+
+                if (triggeredEquipment.size > 0) {
+                    fetchRequests(true); // Refresh list silently if new requests were created
+                }
+
+            } catch (error) {
+                console.error("Falha ao verificar/criar pedidos preventivos:", error);
+            }
+        };
+
+        checkAndCreatePreventives();
+    }, [requests]); // Executa toda vez que a lista de pedidos é atualizada
+
     const handleLogin = (loggedInUser: User) => {
         setUser(loggedInUser);
     };
@@ -82,8 +155,12 @@ const App: React.FC = () => {
         setCurrentPage('request-detail');
     };
 
-    const handleBackToList = () => {
+    const handleBackToList = (targetPage?: string) => {
         setSelectedRequestId(null);
+        if (targetPage) {
+            setCurrentPage(targetPage);
+            return;
+        }
         // Navigate back to the most relevant list page
         const canViewAll = [UserRole.MAINTENANCE, UserRole.MANAGER, UserRole.ADMIN].includes(user?.role || UserRole.REQUESTER);
         setCurrentPage(canViewAll ? 'all-requests' : 'my-requests');
@@ -113,22 +190,6 @@ const App: React.FC = () => {
         } catch (error: any) {
             console.error(`Failed to ${isEditing ? 'update' : 'create'} request:`, error);
             alert(error.message || `Não foi possível ${isEditing ? 'atualizar' : 'criar'} o pedido. Tente novamente.`);
-        }
-    };
-
-    const handleCreatePreventiveRequest = async (requestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt' | 'requester' | 'status'>) => {
-        const preventiveRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'> = {
-            ...requestData,
-            requester: SYSTEM_USER,
-            status: RequestStatus.PENDING_APPROVAL,
-            isPreventive: true,
-        };
-
-        try {
-            await api.createRequest(preventiveRequestData);
-            await fetchRequests(true); // Refresh list silently
-        } catch (error) {
-            console.error("Falha ao criar pedido preventivo:", error);
         }
     };
 
@@ -182,10 +243,10 @@ const App: React.FC = () => {
 
         switch (currentPage) {
             case 'dashboard':
-                if (user) return <DashboardPage requests={requests} onTriggerPreventiveRequest={handleCreatePreventiveRequest} />;
+                if (user) return <DashboardPage requests={requests} />;
                 return null;
             case 'preventive-requests':
-                if (user) return <PreventiveRequestsPage user={user} requests={requests} onEditRequest={handleEditRequest} onRequestUpdate={fetchRequests} />;
+                if (user) return <PreventiveRequestsPage user={user} requests={requests} onEditRequest={handleEditRequest} onRequestUpdate={fetchRequests} onSelectRequest={handleSelectRequest} />;
                 return null;
             case 'all-requests':
                 return <RequestsListPage title="Todos os Pedidos" requests={requests.filter(r => !r.isPreventive)} onSelectRequest={handleSelectRequest} />;
@@ -210,7 +271,7 @@ const App: React.FC = () => {
                  if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
             default:
-                if (user) return <DashboardPage requests={requests} onTriggerPreventiveRequest={handleCreatePreventiveRequest} />;
+                if (user) return <DashboardPage requests={requests} />;
                 return null;
         }
     };
