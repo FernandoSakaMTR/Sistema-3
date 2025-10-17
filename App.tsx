@@ -11,6 +11,7 @@ import CreateRequestPage from './pages/CreateRequestPage';
 import UserManagementPage from './pages/UserManagementPage';
 import MyProfilePage from './pages/MyProfilePage';
 import PreventiveRequestsPage from './pages/PreventiveRequestsPage';
+import TutorialPage from './pages/TutorialPage';
 import * as api from './services/mockApiService';
 import { getOperationalData } from './services/operationalDataService';
 import { SYSTEM_USER, PREVENTIVE_CHECKLISTS } from './constants';
@@ -329,6 +330,9 @@ const App: React.FC = () => {
             case 'my-profile':
                  if (user) return <MyProfilePage user={user} onUserUpdate={handleUserUpdate} />;
                  return null;
+            case 'tutorial':
+                if (user) return <TutorialPage user={user} />;
+                return null;
             default:
                 if (user) return <DashboardPage requests={requests} />;
                 return null;

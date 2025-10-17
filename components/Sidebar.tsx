@@ -1,5 +1,5 @@
 import React from 'react';
-import { DashboardIcon, ListIcon, PlusIcon, UserIcon, XIcon, ShieldCheckIcon } from './icons';
+import { DashboardIcon, ListIcon, PlusIcon, UserIcon, XIcon, ShieldCheckIcon, BookOpenIcon } from './icons';
 import type { User } from '../types';
 import { UserRole } from '../types';
 
@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
             <XIcon className="h-6 w-6" />
         </button>
       </div>
-      <nav>
+      <nav className="flex-grow">
         <ul>
           {isManagerOrAdmin && (
             <NavItem
@@ -107,7 +107,19 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
               isCollapsed={isDesktopCollapsed}
             />
           )}
-          {isAdmin && (
+        </ul>
+      </nav>
+      {/* Itens do rodapé do menu */}
+      <div className="mt-auto">
+        <ul>
+            <NavItem
+              icon={<BookOpenIcon className="h-6 w-6" />}
+              label="Tutorial"
+              isActive={currentPage === 'tutorial'}
+              onClick={() => handleNavigation('tutorial')}
+              isCollapsed={isDesktopCollapsed}
+            />
+           {isAdmin && (
             <NavItem
               icon={<UserIcon className="h-6 w-6" />}
               label="Gerenciar Usuários"
@@ -117,9 +129,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, onNavigate, isDesk
             />
           )}
         </ul>
-      </nav>
-       <div className={`mt-auto transition-opacity duration-300 ${isDesktopCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-        {!isDesktopCollapsed && <p className="text-sm text-blue-300 text-center">v1.0.0</p>}
+        <div className={`mt-4 transition-opacity duration-300 ${isDesktopCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+          {!isDesktopCollapsed && <p className="text-sm text-blue-300 text-center">v1.0.0</p>}
+        </div>
       </div>
     </aside>
   );
