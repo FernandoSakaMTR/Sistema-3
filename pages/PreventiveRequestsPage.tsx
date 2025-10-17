@@ -28,7 +28,7 @@ const PreventiveRequestCard: React.FC<{
             <div className="border-t pt-3 flex flex-wrap justify-between items-center text-sm text-gray-600">
                 <div>
                     <p>Equipamento: <span className="font-medium">{request.equipment.join(', ')}</span></p>
-                    <p>Tipo: <span className="font-medium">{request.maintenanceType}</span></p>
+                    <p>Tipo: <span className="font-medium">{request.maintenanceType.join(', ')}</span></p>
                 </div>
             </div>
         </div>

@@ -30,7 +30,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
     const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus | ''>('');
     const [equipment, setEquipment] = useState('');
     const [requesterSector, setRequesterSector] = useState('');
-    const [maintenanceType, setMaintenanceType] = useState<MaintenanceType | ''>('');
+    const [maintenanceTypes, setMaintenanceTypes] = useState<MaintenanceType[]>([]);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [failureTime, setFailureTime] = useState('');
     const [errors, setErrors] = useState<{ 
@@ -49,7 +49,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             setDescription(requestToEdit.description);
             setEquipmentStatus(requestToEdit.equipmentStatus);
             setEquipment(requestToEdit.equipment.join(', '));
-            setMaintenanceType(requestToEdit.maintenanceType);
+            setMaintenanceTypes(requestToEdit.maintenanceType);
             setAttachments(requestToEdit.attachments || []);
             setRequesterSector(requestToEdit.requesterSector);
             setFailureTime(formatDateForInput(requestToEdit.failureTime));
@@ -59,13 +59,21 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             setDescription('');
             setEquipmentStatus('');
             setEquipment('');
-            setMaintenanceType('');
+            setMaintenanceTypes([]);
             setAttachments([]);
             setErrors({});
             setRequesterSector('');
             setFailureTime(formatDateForInput(new Date())); // Default para agora
         }
     }, [isEditing, requestToEdit, user.sector]);
+
+    const handleMaintenanceTypeChange = (type: MaintenanceType) => {
+        setMaintenanceTypes(prev =>
+            prev.includes(type)
+                ? prev.filter(t => t !== type)
+                : [...prev, type]
+        );
+    };
 
     const validateForm = () => {
         const newErrors: typeof errors = {};
@@ -74,7 +82,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
         if (!requesterSector) newErrors.requesterSector = 'Por favor, selecione um setor.';
         if (!description.trim()) newErrors.description = 'O campo de descrição é obrigatório.';
         if (!failureTime) newErrors.failureTime = 'A data e hora da falha são obrigatórias.';
-        if (!maintenanceType) newErrors.maintenanceType = 'Por favor, selecione o tipo de manutenção.';
+        if (maintenanceTypes.length === 0) newErrors.maintenanceType = 'Selecione ao menos um tipo de manutenção.';
         if (!equipmentStatus) newErrors.equipmentStatus = 'Por favor, selecione o status do equipamento.';
 
         setErrors(newErrors);
@@ -94,7 +102,7 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
             requester: { ...user, name: requesterName.trim() },
             requesterSector,
             equipment: equipment.split(',').map(item => item.trim()),
-            maintenanceType: maintenanceType as MaintenanceType,
+            maintenanceType: maintenanceTypes,
             attachments,
             failureTime: new Date(failureTime),
         };
@@ -151,12 +159,21 @@ const CreateRequestPage: React.FC<CreateRequestPageProps> = ({ user, onSubmit, r
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label htmlFor="maintenanceType" className="block text-sm font-medium text-gray-700">Tipo de Manutenção*</label>
-                        <select id="maintenanceType" value={maintenanceType} onChange={e => setMaintenanceType(e.target.value as MaintenanceType)} className={`${normalInputStyle} ${errors.maintenanceType ? 'border-red-500' : ''}`}>
-                            <option value="" disabled>Selecione o tipo</option>
-                            {Object.values(MaintenanceType).map(type => <option key={type} value={type}>{type}</option>)}
-                        </select>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Tipo de Manutenção*</label>
+                        <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-2 p-3 rounded-md border ${errors.maintenanceType ? 'border-red-500' : 'border-gray-300'}`}>
+                            {Object.values(MaintenanceType).map(type => (
+                                <label key={type} className="flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={maintenanceTypes.includes(type)}
+                                        onChange={() => handleMaintenanceTypeChange(type)}
+                                        className="h-4 w-4 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
+                                    />
+                                    <span className="ml-2 text-sm text-gray-700">{type}</span>
+                                </label>
+                            ))}
+                        </div>
                         {errors.maintenanceType && <p className="mt-1 text-sm text-red-600">{errors.maintenanceType}</p>}
                     </div>
                     <div>

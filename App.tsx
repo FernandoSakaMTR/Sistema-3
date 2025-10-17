@@ -19,6 +19,7 @@ const PREVENTIVE_MAINTENANCE_CYCLE_HOURS = 300;
 const PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE = 0.85;
 const PREVENTIVE_THRESHOLD_MS = PREVENTIVE_MAINTENANCE_CYCLE_HOURS * PREVENTIVE_MAINTENANCE_TRIGGER_PERCENTAGE * 60 * 60 * 1000;
 
+type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -28,6 +29,40 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+
+    const handleSync = useCallback(async () => {
+        if (!navigator.onLine) {
+            setSyncStatus('idle');
+            return;
+        }
+        setSyncStatus('syncing');
+        try {
+            await api.syncWithServer();
+            setSyncStatus('synced');
+        } catch (error) {
+            console.error("Sync failed", error);
+            setSyncStatus('error');
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            handleSync();
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [handleSync]);
+
 
     const fetchRequests = useCallback(async (isBackgroundRefresh = false) => {
         if (!isBackgroundRefresh) setLoading(true);
@@ -46,7 +81,8 @@ const App: React.FC = () => {
 
     useEffect(() => {
         if (user) {
-            fetchRequests(false); // Carga inicial
+            fetchRequests(false);
+            handleSync(); // Tenta sincronizar ao logar
             let defaultPage: string;
             if ([UserRole.MANAGER, UserRole.ADMIN].includes(user.role)) {
                 defaultPage = 'dashboard';
@@ -57,20 +93,8 @@ const App: React.FC = () => {
             }
             setCurrentPage(defaultPage);
         }
-    }, [user, fetchRequests]);
+    }, [user, fetchRequests, handleSync]);
     
-    // Efeito para polling de dados (atualização em tempo real)
-    useEffect(() => {
-        if (user) {
-            const intervalId = setInterval(() => {
-                fetchRequests(true); // Atualização em segundo plano
-            }, 15000); // Atualiza a cada 15 segundos
-
-            // Limpa o intervalo quando o usuário desloga ou o componente é desmontado
-            return () => clearInterval(intervalId);
-        }
-    }, [user, fetchRequests]);
-
     // Efeito centralizado para criar pedidos preventivos
     useEffect(() => {
         const checkAndCreatePreventives = async () => {
@@ -108,22 +132,27 @@ const App: React.FC = () => {
                         );
                         
                         if (!hasActiveWorkOrder) {
-                             const maintenanceType = lastCompletedRequest.maintenanceType;
-                             const checklistTemplate = PREVENTIVE_CHECKLISTS[maintenanceType as MaintenanceType] || [];
-                             const checklist = checklistTemplate.map(item => ({ item, checked: false }));
+                             const maintenanceTypes = lastCompletedRequest.maintenanceType;
+                             const checklists = maintenanceTypes.map(type => {
+                                const checklistTemplate = PREVENTIVE_CHECKLISTS[type as MaintenanceType] || [];
+                                return {
+                                    type,
+                                    items: checklistTemplate.map(item => ({ item, checked: false }))
+                                };
+                             }).filter(cl => cl.items.length > 0);
 
                              const preventiveRequestData: Omit<MaintenanceRequest, 'id' | 'createdAt' | 'updatedAt'> = {
-                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último tipo de manutenção: ${maintenanceType}.`,
+                                description: `Manutenção Preventiva Programada para ${equipmentName}. Atingiu ${(uptimeMs / (1000 * 60 * 60)).toFixed(1)}h de operação, excedendo o limite de ${(PREVENTIVE_THRESHOLD_MS / (1000 * 60 * 60)).toFixed(1)}h. Último(s) tipo(s) de manutenção: ${maintenanceTypes.join(', ')}.`,
                                 equipmentStatus: EquipmentStatus.OPERATIONAL,
                                 requester: SYSTEM_USER,
                                 requesterSector: lastCompletedRequest.requesterSector,
                                 equipment: [equipmentName],
-                                maintenanceType: maintenanceType,
+                                maintenanceType: maintenanceTypes,
                                 failureTime: new Date(),
                                 attachments: [],
                                 status: RequestStatus.PENDING_APPROVAL,
                                 isPreventive: true,
-                                checklist: checklist.length > 0 ? checklist : undefined,
+                                checklists: checklists.length > 0 ? checklists : undefined,
                             };
                             await api.createRequest(preventiveRequestData);
                             triggeredEquipment.add(equipmentName);
@@ -132,7 +161,8 @@ const App: React.FC = () => {
                 }
 
                 if (triggeredEquipment.size > 0) {
-                    fetchRequests(true); // Refresh list silently if new requests were created
+                    await fetchRequests(true); // Refresh list silently if new requests were created
+                    handleSync();
                 }
 
             } catch (error) {
@@ -141,7 +171,7 @@ const App: React.FC = () => {
         };
 
         checkAndCreatePreventives();
-    }, [requests]); // Executa toda vez que a lista de pedidos é atualizada
+    }, [requests, fetchRequests, handleSync]);
 
     const handleLogin = (loggedInUser: User) => {
         setUser(loggedInUser);
@@ -198,6 +228,7 @@ const App: React.FC = () => {
                 alert('Pedido criado com sucesso!');
                 setCurrentPage('my-requests');
             }
+            handleSync();
         } catch (error: any) {
             console.error(`Failed to ${isEditing ? 'update' : 'create'} request:`, error);
             alert(error.message || `Não foi possível ${isEditing ? 'atualizar' : 'criar'} o pedido. Tente novamente.`);
@@ -214,6 +245,7 @@ const App: React.FC = () => {
                 if (selectedRequestId === requestId) {
                     handleBackToList();
                 }
+                handleSync();
             } catch (error: any) {
                 console.error("Failed to delete request:", error);
                 alert(error.message || "Não foi possível excluir o pedido.");
@@ -221,10 +253,17 @@ const App: React.FC = () => {
         }
     };
 
-    const handleUserUpdate = (updatedUser: User) => {
+    const handleUserUpdate = async (updatedUser: User) => {
         setUser(updatedUser);
         alert('Perfil atualizado com sucesso!');
+        handleSync();
     };
+    
+    const onRequestUpdate = async () => {
+        await fetchRequests(true);
+        handleSync();
+    }
+
 
     const renderPage = () => {
         if (user) {
@@ -237,7 +276,7 @@ const App: React.FC = () => {
                                 onBack={handleBackToList}
                                 onDeleteRequest={handleDeleteRequest} 
                                 onEditRequest={handleEditRequest}
-                                onRequestUpdate={fetchRequests}
+                                onRequestUpdate={onRequestUpdate}
                             />;
                 }
                 if (currentPage === 'edit-request' && request) {
@@ -318,6 +357,8 @@ const App: React.FC = () => {
                     onToggleDesktopSidebar={toggleDesktopSidebar}
                     isDesktopSidebarCollapsed={isDesktopSidebarCollapsed} 
                     onToggleMobileSidebar={() => setMobileMenuOpen(true)}
+                    isOnline={isOnline}
+                    syncStatus={syncStatus}
                 />
                 <main className="flex-1 overflow-y-auto pt-20">
                     {loading ? <div className="p-8">Carregando dados...</div> : renderPage()}

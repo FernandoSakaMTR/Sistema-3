@@ -102,7 +102,7 @@ const RequestCard: React.FC<{
             <div className="flex justify-between items-center text-sm text-gray-600">
                 <div>
                     <p>Equipamento: <span className="font-medium">{request.equipment.join(', ')}</span></p>
-                    <p>Tipo: <span className="font-medium">{request.maintenanceType}</span></p>
+                    <p>Tipo: <span className="font-medium">{request.maintenanceType.join(', ')}</span></p>
                 </div>
                 <div className="text-right">
                     <p>Criado em:</p>

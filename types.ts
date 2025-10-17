@@ -46,7 +46,7 @@ export interface MaintenanceRequest {
   requester: User;
   requesterSector: string;
   equipment: string[];
-  maintenanceType: MaintenanceType;
+  maintenanceType: MaintenanceType[];
   failureTime: Date; // Data e hora exata da falha para cálculo de MTBF
   createdAt: Date;
   deadline?: Date;
@@ -61,7 +61,7 @@ export interface MaintenanceRequest {
   attachments: File[];
   isPreventive?: boolean;
   approvedBy?: string;
-  checklist?: { item: string; checked: boolean }[];
+  checklists?: { type: MaintenanceType; items: { item: string; checked: boolean }[] }[];
   requestedCompletedAt?: Date;
   completionChangeReason?: string;
 }

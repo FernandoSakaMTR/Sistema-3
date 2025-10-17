@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { MaintenanceRequest, User } from '../types';
+import type { MaintenanceRequest, User, MaintenanceType } from '../types';
 import { UserRole, RequestStatus } from '../types';
 import { getRequestById, updateRequestStatus, approvePreventiveRequest, updateRequest, submitCompletionForApproval, resolveCompletionApproval } from '../services/mockApiService';
 import StatusBadge from '../components/StatusBadge';
@@ -122,7 +122,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [rejectionReason, setRejectionReason] = useState('');
 
     // State for checklist
-    const [checklist, setChecklist] = useState<{ item: string; checked: boolean; }[]>([]);
+    const [checklists, setChecklists] = useState<{ type: MaintenanceType; items: { item: string; checked: boolean; }[] }[]>([]);
     
     // State for completion date change
     const [isCompletionDateChanged, setIsCompletionDateChanged] = useState(false);
@@ -135,8 +135,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         try {
             const data = await getRequestById(requestId);
             setRequest(data || null);
-            if (data?.checklist) {
-                setChecklist(data.checklist);
+            if (data?.checklists) {
+                setChecklists(data.checklists);
             }
         } catch(error) {
             console.error("Failed to fetch request details:", error);
@@ -167,8 +167,8 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         setNewCompletionDate(formatDateForInput(new Date()));
         setCompletionChangeReason('');
 
-        if (request?.checklist) {
-            setChecklist([...request.checklist]);
+        if (request?.checklists) {
+            setChecklists(JSON.parse(JSON.stringify(request.checklists))); // Deep copy
         }
         setIsActionModalOpen(true);
     };
@@ -190,7 +190,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         completionChangeReason: completionChangeReason,
                         maintenanceNotes: actionReason,
                         completedBy: completerName,
-                        checklist: checklist,
+                        checklists: checklists,
                     });
                     alert('Solicitação de alteração de data enviada para aprovação!');
                     onBack('all-requests');
@@ -201,7 +201,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         completedAt: new Date(),
                         maintenanceNotes: actionReason,
                         completedBy: completerName,
-                        checklist: checklist,
+                        checklists: checklists,
                     };
                     await updateRequest(requestId, updateData, user.id);
                 }
@@ -278,10 +278,10 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         }
     };
 
-    const handleChecklistChange = (index: number) => {
-        const newChecklist = [...checklist];
-        newChecklist[index].checked = !newChecklist[index].checked;
-        setChecklist(newChecklist);
+    const handleChecklistChange = (checklistIndex: number, itemIndex: number) => {
+        const newChecklists = [...checklists];
+        newChecklists[checklistIndex].items[itemIndex].checked = !newChecklists[checklistIndex].items[itemIndex].checked;
+        setChecklists(newChecklists);
     };
 
     const handleDatePartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,20 +365,25 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             case RequestStatus.COMPLETED:
                 return (
                     <div className="space-y-4">
-                        {request?.checklist && request.checklist.length > 0 && (
-                            <div>
-                                <h3 className="block text-sm font-medium text-gray-700 mb-2">Checklist de Verificação*</h3>
-                                <div className="space-y-3 border rounded-md p-4 bg-gray-50 max-h-48 overflow-y-auto">
-                                    {checklist.map((item, index) => (
-                                        <label key={index} className="flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={item.checked}
-                                                onChange={() => handleChecklistChange(index)}
-                                                className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
-                                            />
-                                            <span className={`ml-3 text-md text-gray-800`}>{item.item}</span>
-                                        </label>
+                        {checklists && checklists.length > 0 && (
+                            <div className="space-y-4">
+                                <h3 className="block text-sm font-medium text-gray-700">Checklist de Verificação*</h3>
+                                <div className="space-y-4 border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
+                                    {checklists.map((checklist, checklistIndex) => (
+                                        <div key={checklist.type}>
+                                            <h4 className="font-semibold text-gray-800 border-b pb-1 mb-2">{checklist.type}</h4>
+                                            {checklist.items.map((item, itemIndex) => (
+                                                <label key={itemIndex} className="flex items-center cursor-pointer p-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={item.checked}
+                                                        onChange={() => handleChecklistChange(checklistIndex, itemIndex)}
+                                                        className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
+                                                    />
+                                                    <span className={`ml-3 text-md text-gray-800`}>{item.item}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -501,7 +506,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
         return 'text-brand-blue';
     };
 
-    const shouldDisplayChecklist = request.checklist && request.checklist.length > 0 && (request.isPreventive || request.approvedBy);
+    const shouldDisplayChecklist = request.checklists && request.checklists.length > 0 && (request.isPreventive || request.approvedBy);
 
 
     return (
@@ -609,7 +614,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                     <DetailItem label="Solicitante" value={request.requester.name} />
                     <DetailItem label="Setor" value={request.requesterSector} />
                     <DetailItem label="Equipamento" value={request.equipment} />
-                    <DetailItem label="Tipo" value={request.maintenanceType} />
+                    <DetailItem label="Tipo" value={request.maintenanceType.join(', ')} />
                     <DetailItem label="Data da Abertura" value={formatDate(request.createdAt)} />
                 </div>
                 
@@ -673,17 +678,24 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                                     {isPendingPreventive && <p className="text-sm text-purple-700 mb-4">Este é o checklist que a equipe de manutenção deverá seguir após a aprovação.</p>}
                                     {request.status === RequestStatus.IN_PROGRESS && <p className="text-sm text-yellow-700 mb-4">Este checklist deve ser preenchido ao concluir o atendimento.</p>}
                                      {isCompleted && <p className="text-sm text-green-700 mb-4">Checklist preenchido na conclusão do serviço.</p>}
-                                    <div className="space-y-3">
-                                        {checklist.map((item, index) => (
-                                            <label key={index} className={`flex items-center p-2 rounded-md transition-colors`}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.checked}
-                                                    disabled
-                                                    className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
-                                                />
-                                                <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
-                                            </label>
+                                    <div className="space-y-4">
+                                        {checklists.map((checklist) => (
+                                             <div key={checklist.type}>
+                                                <h4 className="font-semibold text-gray-800 border-b pb-1 mb-2">{checklist.type}</h4>
+                                                <div className="space-y-3 pl-2">
+                                                    {checklist.items.map((item) => (
+                                                        <label key={item.item} className={`flex items-center p-2 rounded-md transition-colors`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={item.checked}
+                                                                disabled
+                                                                className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
+                                                            />
+                                                            <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
