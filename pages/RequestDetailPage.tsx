@@ -112,6 +112,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [currentAction, setCurrentAction] = useState<RequestStatus | null>(null);
     const [actionReason, setActionReason] = useState('');
+    const [partsReplaced, setPartsReplaced] = useState('');
     const [assigneeName, setAssigneeName] = useState('');
     const [completerName, setCompleterName] = useState('');
     
@@ -122,7 +123,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const [rejectionReason, setRejectionReason] = useState('');
 
     // State for checklist
-    const [checklists, setChecklists] = useState<{ type: MaintenanceType; items: { item: string; checked: boolean; }[] }[]>([]);
+    const [checklists, setChecklists] = useState<{ type: MaintenanceType; items: { item: string; checked: boolean; justification?: string; }[] }[]>([]);
     
     // State for completion date change
     const [isCompletionDateChanged, setIsCompletionDateChanged] = useState(false);
@@ -161,6 +162,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
     const handleActionSelect = (action: RequestStatus) => {
         setCurrentAction(action);
         setActionReason('');
+        setPartsReplaced('');
         setAssigneeName('');
         setCompleterName('');
         setIsCompletionDateChanged(false);
@@ -189,6 +191,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         requestedCompletedAt: new Date(newCompletionDate),
                         completionChangeReason: completionChangeReason,
                         maintenanceNotes: actionReason,
+                        partsReplaced: partsReplaced,
                         completedBy: completerName,
                         checklists: checklists,
                     });
@@ -200,6 +203,7 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         status: RequestStatus.COMPLETED,
                         completedAt: new Date(),
                         maintenanceNotes: actionReason,
+                        partsReplaced: partsReplaced,
                         completedBy: completerName,
                         checklists: checklists,
                     };
@@ -280,7 +284,19 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
 
     const handleChecklistChange = (checklistIndex: number, itemIndex: number) => {
         const newChecklists = [...checklists];
-        newChecklists[checklistIndex].items[itemIndex].checked = !newChecklists[checklistIndex].items[itemIndex].checked;
+        const currentItem = newChecklists[checklistIndex].items[itemIndex];
+        currentItem.checked = !currentItem.checked;
+        // If an item is checked, its justification is no longer needed.
+        if (currentItem.checked) {
+            currentItem.justification = '';
+        }
+        setChecklists(newChecklists);
+    };
+
+    const handleJustificationChange = (checklistIndex: number, itemIndex: number, justification: string) => {
+        const newChecklists = [...checklists];
+        if (!newChecklists[checklistIndex].items[itemIndex]) return;
+        newChecklists[checklistIndex].items[itemIndex].justification = justification;
         setChecklists(newChecklists);
     };
 
@@ -337,6 +353,12 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
             case RequestStatus.IN_PROGRESS:
                 return !assigneeName.trim();
             case RequestStatus.COMPLETED:
+                const isChecklistInvalid = checklists.some(cl =>
+                    cl.items.some(item => !item.checked && (!item.justification || item.justification.trim() === ''))
+                );
+                if (isChecklistInvalid) {
+                    return true;
+                }
                 if (isCompletionDateChanged) {
                     return !actionReason.trim() || !completerName.trim() || !newCompletionDate || !completionChangeReason.trim();
                 }
@@ -368,20 +390,33 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                         {checklists && checklists.length > 0 && (
                             <div className="space-y-4">
                                 <h3 className="block text-sm font-medium text-gray-700">Checklist de Verificação*</h3>
-                                <div className="space-y-4 border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
+                                <div className="space-y-2 border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
                                     {checklists.map((checklist, checklistIndex) => (
                                         <div key={checklist.type}>
                                             <h4 className="font-semibold text-gray-800 border-b pb-1 mb-2">{checklist.type}</h4>
                                             {checklist.items.map((item, itemIndex) => (
-                                                <label key={itemIndex} className="flex items-center cursor-pointer p-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={item.checked}
-                                                        onChange={() => handleChecklistChange(checklistIndex, itemIndex)}
-                                                        className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
-                                                    />
-                                                    <span className={`ml-3 text-md text-gray-800`}>{item.item}</span>
-                                                </label>
+                                                <div key={itemIndex} className="py-1">
+                                                    <label className="flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={item.checked}
+                                                            onChange={() => handleChecklistChange(checklistIndex, itemIndex)}
+                                                            className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light"
+                                                        />
+                                                        <span className={`ml-3 text-md text-gray-800`}>{item.item}</span>
+                                                    </label>
+                                                    {!item.checked && (
+                                                        <div className="pl-8 pt-1">
+                                                            <textarea
+                                                                placeholder="Justifique quando não verificado (obrigatório)"
+                                                                value={item.justification || ''}
+                                                                onChange={(e) => handleJustificationChange(checklistIndex, itemIndex, e.target.value)}
+                                                                className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 focus:border-red-500 focus:ring-red-500"
+                                                                rows={2}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ))}
                                         </div>
                                     ))}
@@ -392,6 +427,11 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                             <label htmlFor="maintenanceNotes" className="block text-sm font-medium text-gray-700">O que foi feito?*</label>
                             <textarea id="maintenanceNotes" value={actionReason} onChange={e => setActionReason(e.target.value)} rows={4}
                                       className={prominentInputStyle} placeholder="Descreva o serviço realizado..."></textarea>
+                        </div>
+                        <div>
+                            <label htmlFor="partsReplaced" className="block text-sm font-medium text-gray-700">Peças substituídas (se houver)</label>
+                            <textarea id="partsReplaced" value={partsReplaced} onChange={e => setPartsReplaced(e.target.value)} rows={3}
+                                      className={prominentInputStyle} placeholder="Liste as peças que foram trocadas durante o serviço. Ex: rolamento 6203, correia A-34..."></textarea>
                         </div>
                         <div>
                             <label htmlFor="completerName" className="block text-sm font-medium text-gray-700">Finalizado por*</label>
@@ -684,15 +724,24 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                                                 <h4 className="font-semibold text-gray-800 border-b pb-1 mb-2">{checklist.type}</h4>
                                                 <div className="space-y-3 pl-2">
                                                     {checklist.items.map((item) => (
-                                                        <label key={item.item} className={`flex items-center p-2 rounded-md transition-colors`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={item.checked}
-                                                                disabled
-                                                                className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
-                                                            />
-                                                            <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
-                                                        </label>
+                                                        <div key={item.item} className="py-1">
+                                                            <label className={`flex items-center p-2 rounded-md transition-colors`}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={item.checked}
+                                                                    disabled
+                                                                    className="h-5 w-5 rounded border-gray-300 text-brand-blue-light focus:ring-brand-blue-light disabled:bg-gray-200 disabled:cursor-not-allowed"
+                                                                />
+                                                                <span className={`ml-3 text-md ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{item.item}</span>
+                                                            </label>
+                                                            {!item.checked && item.justification && (
+                                                                <div className="pl-10 mt-1">
+                                                                    <p className="text-sm text-red-800 bg-red-100 p-2 rounded-md border border-red-200">
+                                                                        <span className="font-semibold">Justificativa:</span> {item.justification}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -759,6 +808,11 @@ const RequestDetailPage: React.FC<RequestDetailPageProps> = ({ requestId, user, 
                                         <div className="pt-2">
                                             <DetailItem label="Notas da Manutenção">
                                                 <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.maintenanceNotes || 'N/A'}</p>
+                                            </DetailItem>
+                                        </div>
+                                        <div className="pt-2">
+                                            <DetailItem label="Peças Substituídas">
+                                                <p className="text-lg text-gray-800 whitespace-pre-wrap mt-1">{request.partsReplaced || 'Nenhuma peça foi substituída.'}</p>
                                             </DetailItem>
                                         </div>
                                     </div>

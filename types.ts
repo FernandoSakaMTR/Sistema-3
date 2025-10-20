@@ -56,12 +56,13 @@ export interface MaintenanceRequest {
   startedAt?: Date;
   completedAt?: Date;
   maintenanceNotes?: string;
+  partsReplaced?: string;
   materialsUsed?: string[];
   cancelReason?: string;
   attachments: File[];
   isPreventive?: boolean;
   approvedBy?: string;
-  checklists?: { type: MaintenanceType; items: { item: string; checked: boolean }[] }[];
+  checklists?: { type: MaintenanceType; items: { item: string; checked: boolean; justification?: string }[] }[];
   requestedCompletedAt?: Date;
   completionChangeReason?: string;
 }

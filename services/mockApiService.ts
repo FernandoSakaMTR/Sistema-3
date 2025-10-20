@@ -348,6 +348,7 @@ export const submitCompletionForApproval = async (
         requestedCompletedAt: Date;
         completionChangeReason: string;
         maintenanceNotes: string;
+        partsReplaced?: string;
         completedBy: string;
         checklists: { type: MaintenanceType; items: { item: string; checked: boolean }[] }[];
     }
