@@ -3,7 +3,7 @@ import { ShieldCheckIcon, BriefcaseIcon, WrenchIcon, UserIcon, CogIcon } from '.
 import React from 'react';
 
 
-export const SECTORS: string[] = ['Prensa', 'Rosca', 'Forno', 'Fresa/Fenda', 'Outro'];
+export const SECTORS: string[] = ['Escritório', 'Expedição', 'Forno', 'Fresa/Fenda', 'Manutenção', 'Predial', 'Prensa', 'Rosca', 'Outro'];
 
 export const ROLE_ICONS: Record<UserRole, React.FC<React.SVGProps<SVGSVGElement>>> = {
   [UserRole.ADMIN]: ShieldCheckIcon,
